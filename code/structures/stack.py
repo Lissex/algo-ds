@@ -6,21 +6,22 @@ class Node:
 
 class Stack:
     """Стек (LIFO — Last In, First Out) на связанном списке.
-    Вершина стека — голова списка, поэтому все операции O(1)."""
+    Вершина стека — голова списка, поэтому все операции O(1) по времени и O(1) по памяти.
+    Сам стек занимает O(n): n узлов."""
 
     def __init__(self):
         self.top = None
         self.size = 0
 
     def add(self, val):
-        """Положить элемент на вершину (push). O(1)"""
+        """Положить элемент на вершину (push). Время O(1), память O(1) — один узел."""
         new_node = Node(val)
         new_node.next = self.top
         self.top = new_node
         self.size += 1
 
     def remove(self):
-        """Снять элемент с вершины и вернуть его (pop). O(1)"""
+        """Снять элемент с вершины и вернуть его (pop). Время O(1), память O(1)."""
         if self.top is None:
             raise IndexError("remove from empty stack")
         val = self.top.val
@@ -29,7 +30,7 @@ class Stack:
         return val
 
     def peek(self):
-        """Посмотреть верхний элемент, не удаляя его. O(1)"""
+        """Посмотреть верхний элемент, не удаляя его. Время O(1), память O(1)."""
         if self.top is None:
             raise IndexError("peek from empty stack")
         return self.top.val

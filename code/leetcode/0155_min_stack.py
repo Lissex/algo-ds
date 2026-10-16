@@ -1,3 +1,6 @@
+# Время O(1) на каждую операцию.
+# Память O(n): два стека по n элементов.
+
 class MinStack:
     def __init__(self):
         self.stack = []

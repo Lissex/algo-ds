@@ -1,3 +1,6 @@
+# Время O(n): split и один проход по парам.
+# Память O(n): список слов и два словаря.
+
 class Solution:
     def wordPattern(self, pattern: str, s: str) -> bool:
         words = s.split()

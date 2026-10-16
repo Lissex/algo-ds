@@ -1,6 +1,8 @@
 # АиСД · Раздел 2
 
-Сайт для подготовки к экзамену по алгоритмам и структурам данных: теория с интерактивными моделями, 15 билетов с ответами и решения 14 задач LeetCode на Python.
+Сайт для подготовки к экзамену по алгоритмам и структурам данных: теория с интерактивными моделями, 15 билетов с ответами, решения 14 задач LeetCode на Python и тренажёр — пишешь код прямо в браузере, запускаешь и проверяешь тестами.
+
+Python в браузере работает через [Pyodide](https://pyodide.org) (загружается с CDN при первом запуске, ~10 МБ), редактор — [CodeMirror 5](https://codemirror.net/5/).
 
 Код структур основан на репозитории преподавателя [Bunyod2002/Data-structures](https://github.com/Bunyod2002/Data-structures).
 
@@ -25,7 +27,7 @@
 ```bash
 python -m http.server 8000
 ```
-Потом открой http://localhost:8000. Можно и просто открыть `index.html` двойным кликом, но сравнение с SHA-256 на странице «Хэширование» работает только через сервер или на GitHub Pages.
+Потом открой http://localhost:8000. Можно и просто открыть `index.html` двойным кликом — тренажёр тоже заработает (нужен интернет для загрузки Python), но сравнение с SHA-256 на странице «Хэширование» работает только через сервер или на GitHub Pages.
 
 ## Структура
 
@@ -36,12 +38,16 @@ assets/app.js         — навигация, поиск, билеты, режи
 assets/viz.js         — интерактивные модели структур
 assets/topics.js      — теория по темам
 assets/tickets.js     — билеты, методы, задачи LeetCode
+assets/trainer.js     — тренажёр: редактор, запуск Python, проверка
 assets/code.js        — код из папки code/ (генерируется)
+assets/exercises.js   — заготовки и тесты тренажёра (генерируется)
 code/structures/      — структуры данных (исправленный код преподавателя + Stack, Queue, LinkedDeque)
 code/leetcode/        — решения задач
 code/teacher/         — оригинальные файлы преподавателя
 tests/test_all.py     — тесты всего кода
-tools/build.py        — пересобирает assets/code.js
+tests/test_exercises.py — проверка тренажёра (эталон проходит, заготовка нет)
+tools/build.py        — пересобирает assets/code.js и assets/exercises.js
+tools/exercises_spec.py — тесты и заготовки тренажёра
 ```
 
 ## Если меняешь код
@@ -49,8 +55,9 @@ tools/build.py        — пересобирает assets/code.js
 После правки любого `.py` в папке `code/`:
 
 ```bash
-python tests/test_all.py   # проверить, что всё работает
-python tools/build.py      # обновить код на сайте
+python tests/test_all.py        # проверить, что всё работает
+python tools/build.py           # обновить код и тренажёр на сайте
+python tests/test_exercises.py  # проверить тесты тренажёра
 ```
 
 ## Добавить раздел 1

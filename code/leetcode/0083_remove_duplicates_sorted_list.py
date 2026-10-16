@@ -1,3 +1,6 @@
+# Время O(n): один проход.
+# Память O(1): только указатель cur.
+
 from typing import Optional
 
 

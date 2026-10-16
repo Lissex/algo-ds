@@ -10,7 +10,8 @@ class Deque:
         self.deque = [None] * self.capacity
 
     def append(self, val):
-        """В правый конец. O(1) амортизированно."""
+        """В правый конец. Время O(1) амортизированно (иногда resize за O(n)),
+        память O(1) амортизированно: обычно просто пишем в свободную ячейку."""
         if self.size == self.capacity:
             self._resize()
         idx = (self.head + self.size) % self.capacity   # первая свободная справа
@@ -18,7 +19,7 @@ class Deque:
         self.size += 1
 
     def appendleft(self, val):
-        """В левый конец. O(1) амортизированно."""
+        """В левый конец. Время и память — O(1) амортизированно (как у append)."""
         if self.size == self.capacity:
             self._resize()
         self.head = (self.head - 1) % self.capacity     # шаг влево с «заворотом»
@@ -26,7 +27,7 @@ class Deque:
         self.size += 1
 
     def pop(self):
-        """popright: забрать справа. O(1)"""
+        """popright: забрать справа. Время O(1): индекс считается формулой. Память O(1)."""
         if self.size == 0:
             raise IndexError("pop from empty deque")
         idx = (self.head + self.size - 1) % self.capacity
@@ -38,7 +39,7 @@ class Deque:
     popright = pop   # в билетах метод называется popright
 
     def popleft(self):
-        """Забрать слева. O(1)"""
+        """Забрать слева. Время O(1): первый всегда в ячейке head. Память O(1)."""
         if self.size == 0:
             raise IndexError("popleft from empty deque")
         val = self.deque[self.head]
@@ -48,7 +49,8 @@ class Deque:
         return val
 
     def _resize(self):
-        """Массив заполнен — создаём вдвое больший и «распрямляем» кольцо. O(n)"""
+        """Массив заполнен — создаём вдвое больший и «распрямляем» кольцо.
+        Время O(n): копируем все элементы. Память O(n): новый массив на 2·capacity."""
         new_capacity = self.capacity * 2
         new_deque = [None] * new_capacity
         for i in range(self.size):

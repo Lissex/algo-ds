@@ -1,3 +1,6 @@
+# Время: push O(n) (прокрутка очереди), pop/top/empty O(1).
+# Память O(n): одна очередь.
+
 from collections import deque
 
 

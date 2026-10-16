@@ -40,7 +40,9 @@ class Hashset:
                 node = node.next
 
     def add(self, key):
-        """Добавить ключ (дубликаты игнорируются). В среднем O(1)."""
+        """Добавить ключ (дубликаты игнорируются).
+        Время: O(1) в среднем (короткая цепочка), O(n) в худшем.
+        Память: O(1) — один узел (при resize — O(n), но редко)."""
         if self._load_factor() >= self.load_factor:
             self._resize()
         idx = self._hash(key)
@@ -58,7 +60,8 @@ class Hashset:
         self.size += 1                    # (у преподавателя этой строки нет)
 
     def remove(self, key):
-        """Удалить ключ. В среднем O(1). Нет ключа — KeyError."""
+        """Удалить ключ. Нет ключа — KeyError.
+        Время: O(1) в среднем, O(n) в худшем. Память: O(1)."""
         idx = self._hash(key)
         head = self.buckets[idx]
         if head is None:

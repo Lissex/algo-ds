@@ -16,7 +16,8 @@ class Double_Linked_List:
             self.append(i)
 
     def _get_node(self, idx):
-        """Узел по индексу. Идём с той стороны, которая ближе: O(n/2)."""
+        """Узел по индексу. Идём с той стороны, которая ближе: до n/2 шагов.
+        Время O(n) (константа ½ отбрасывается), память O(1) — один указатель."""
         if idx < 0:
             idx += self.size               # поддержка lst[-1]
         if idx < 0 or idx >= self.size:
@@ -43,7 +44,7 @@ class Double_Linked_List:
         return self.size
 
     def append(self, val):
-        """В конец. O(1) — благодаря tail."""
+        """В конец. Время O(1) — благодаря tail. Память O(1) — один новый узел."""
         new_node = Node(val)
         self.size += 1
         if not self.head:
@@ -54,7 +55,7 @@ class Double_Linked_List:
         self.tail = new_node
 
     def appendleft(self, val):
-        """В начало. O(1)"""
+        """В начало. Время O(1), память O(1) — один новый узел."""
         new_node = Node(val)
         self.size += 1
         if not self.head:
@@ -66,7 +67,7 @@ class Double_Linked_List:
 
     def pop(self, idx=-1):
         """Удалить по индексу (по умолчанию последний) и вернуть значение.
-        С конца/начала — O(1), из середины — O(n)."""
+        Время: с конца/начала — O(1), из середины — O(n). Память O(1) — только указатели."""
         if self.size == 0:
             raise IndexError("pop from empty list")
         node = self._get_node(idx)
@@ -116,7 +117,8 @@ class Double_Linked_List:
         raise ValueError(f"{val} not in list")
 
     def reverse(self):
-        """Меняем местами prev и next у каждого узла. O(n)"""
+        """Меняем местами prev и next у каждого узла.
+        Время O(n) — один проход, память O(1) — разворот на месте."""
         cur = self.head
         while cur:
             cur.prev, cur.next = cur.next, cur.prev

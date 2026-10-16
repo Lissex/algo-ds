@@ -37,7 +37,8 @@ class Hashtable:
                 node = node.next
 
     def __setitem__(self, key, val):
-        """table[key] = val: вставка или обновление. В среднем O(1)."""
+        """table[key] = val: вставка или обновление.
+        Время: O(1) в среднем, O(n) в худшем. Память: O(1) — максимум один узел."""
         if self._load_factor() >= self.load_factor:
             self._resize()
         idx = self._hash(key)

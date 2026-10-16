@@ -6,7 +6,8 @@ class Node:
 
 class Queue:
     """Очередь (FIFO — First In, First Out) на связанном списке.
-    Добавляем в хвост (tail), забираем из головы (head) — обе операции O(1)."""
+    Добавляем в хвост (tail), забираем из головы (head) — обе операции O(1) по времени и O(1) по памяти.
+    Сама очередь занимает O(n): n узлов."""
 
     def __init__(self):
         self.head = None   # отсюда забираем
@@ -14,7 +15,7 @@ class Queue:
         self.size = 0
 
     def add(self, val):
-        """Поставить элемент в конец очереди (enqueue). O(1)"""
+        """Поставить элемент в конец очереди (enqueue). Время O(1), память O(1) — один узел."""
         new_node = Node(val)
         if self.tail is None:          # очередь пустая
             self.head = self.tail = new_node
@@ -24,7 +25,7 @@ class Queue:
         self.size += 1
 
     def remove(self):
-        """Забрать элемент из начала очереди (dequeue). O(1)"""
+        """Забрать элемент из начала очереди (dequeue). Время O(1), память O(1)."""
         if self.head is None:
             raise IndexError("remove from empty queue")
         val = self.head.val
@@ -35,7 +36,7 @@ class Queue:
         return val
 
     def peek(self):
-        """Посмотреть первый элемент, не удаляя его. O(1)"""
+        """Посмотреть первый элемент, не удаляя его. Время O(1), память O(1)."""
         if self.head is None:
             raise IndexError("peek from empty queue")
         return self.head.val

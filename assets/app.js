@@ -92,7 +92,10 @@
   const ticketsForTopic = id => TK.filter(t => t.theory === id || M[t.method].topic === id).map(t => t.n);
   const ticketsForProblem = n => TK.filter(t => t.lc === n).map(t => t.n);
   const chipsTickets = ns => ns.map(n => `<a class="chip" href="#/tickets/${n}">билет ${n}</a>`).join('');
-  const opsTable = ops => `<div class="tbl-wrap"><table class="ops"><tr><th>Операция</th><th>Сложность</th><th>Комментарий</th></tr>${ops.map(o => `<tr><td>${esc(o[0])}</td><td>${esc(o[1])}</td><td>${esc(o[2])}</td></tr>`).join('')}</table></div>`;
+  const opsTable = ops => `<div class="tbl-wrap"><table class="ops"><tr><th>Операция</th><th>Время</th><th>Память</th><th>Почему так</th></tr>${ops.map(o => `<tr><td>${esc(o[0])}</td><td>${esc(o[1])}</td><td>${esc(o[2])}</td><td>${esc(o[3])}</td></tr>`).join('')}</table></div>`;
+  const BIGO_NOTE = `<p class="muted" style="font-size:14px"><b>Время</b> — сколько шагов делает операция в худшем случае. <b>Память</b> — сколько <i>дополнительной</i> памяти ей нужно, не считая самой структуры (O(1) — несколько переменных, сколько бы ни было элементов). <b>*</b> и «амортизированно» — иногда операция дорогая, но в среднем на серию операций выходит указанная оценка.</p>`;
+  const examWithSpace = t => wrapTables(t.exam) + `<p><b>Память:</b> ${t.space}</p>`;
+  const tmKv = (time, mem, why) => `<dl class="kv"><dt>Время</dt><dd>${time}</dd><dt>Память</dt><dd>${mem}</dd></dl><div class="callout why"><span class="lbl">почему так</span><p>${why}</p></div>`;
   const wrapTables = html => html.replace(/<table class="cmp">/g, '<div class="tbl-wrap"><table class="cmp">').replace(/<\/table>/g, '</table></div>');
 
   function page(html, nav) {
@@ -100,6 +103,17 @@
     document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === nav));
     wireCode(app);
     app.querySelectorAll('[data-viz]').forEach(el => window.VIZ.mount(el, el.dataset.viz));
+    const trHelpers = { codeBlock, wire: wireCode };
+    const mountTr = el => { if (!el.dataset.mounted) { el.dataset.mounted = 1; window.TRAINER.mount(el, el.dataset.trainer, trHelpers); } };
+    app.querySelectorAll('[data-trainer]').forEach(el => { if (!el.closest('[hidden]')) mountTr(el); });
+    app.querySelectorAll('.qtabs').forEach(tb => {
+      const panes = tb.parentElement.querySelectorAll(':scope > [data-qp]');
+      tb.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        tb.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+        panes.forEach(p => { p.hidden = p.dataset.qp !== b.dataset.qt; if (!p.hidden) p.querySelectorAll('[data-trainer]').forEach(mountTr); });
+        if (b.dataset.qt === '1') window.TRAINER.warm();
+      }));
+    });
     app.querySelectorAll('[data-learn]').forEach(b => b.addEventListener('click', e => {
       e.preventDefault(); e.stopPropagation();
       const n = +b.dataset.learn; toggleLearned(n);
@@ -137,7 +151,7 @@
         <div><div class="eyebrow">алгоритмы и структуры данных · раздел 2</div>
           <h1>Структуры данных <em>без зубрёжки</em></h1>
           <p class="lead">Стек, очередь, связанные списки, deque, кольцевой массив и хэширование. Теория с живыми моделями, 15 билетов с готовыми ответами и разбор 14 задач LeetCode на Python.</p>
-          <div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/topics">Теория</a></div>
+          <div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>
         </div>${heroArt}
       </section>
       <div class="stats">
@@ -169,10 +183,10 @@
       <div class="eyebrow"><a href="#/topics">теория</a> / ${String(i + 1).padStart(2, '0')} · ${esc(t.tag)}</div>
       <h1>${esc(t.title)}</h1><p class="lead">${esc(t.summary)}</p>
       <div class="topic-layout"><article class="prose">
-        <section id="exam"><div class="exam-ans"><span class="lbl">ответ на экзамене</span>${wrapTables(t.exam)}</div></section>
+        <section id="exam"><div class="exam-ans"><span class="lbl">ответ на экзамене</span>${examWithSpace(t)}</div></section>
         ${t.viz ? `<section id="model"><h2>Модель</h2><div data-viz="${t.viz}"></div></section>` : ''}
         <section id="details"><h2>Подробнее</h2>${wrapTables(t.body)}</section>
-        <section id="ops"><h2>Сложность операций</h2>${opsTable(t.ops)}</section>
+        <section id="ops"><h2>Сложность: время и память</h2>${BIGO_NOTE}${opsTable(t.ops)}<h3>Память самой структуры</h3><p>${t.space}</p></section>
         <section id="code"><h2>Код на Python</h2>${codeBlock(codeItems, { download: codeItems.length === 1 })}
           <p class="muted" style="font-size:14px">Код основан на <a href="${REPO}" target="_blank" rel="noopener">репозитории преподавателя</a>, проверен тестами.</p></section>
         <section id="links"><h2>Ссылки</h2><ul>${t.links.map(l => `<li><a href="${esc(l[1])}" target="_blank" rel="noopener">${esc(l[0])}</a></li>`).join('')}</ul></section>
@@ -205,17 +219,21 @@
     if (m.alt) items.push({ label: 'на двусвязном списке', src: snip(m.alt) });
     return `${codeBlock(items)}
       <h3>Как работает</h3><ol class="steps">${m.steps.map(s => `<li>${s}</li>`).join('')}</ol>
-      <dl class="kv"><dt>Сложность</dt><dd>${m.complexity}</dd><dt>Крайние случаи</dt><dd>${m.edges.join(' · ')}</dd></dl>
+      <h3>Сложность</h3>${tmKv(m.time, m.mem, m.why)}
+      <dl class="kv"><dt>Крайние случаи</dt><dd>${m.edges.join(' · ')}</dd></dl>
       ${m.note ? `<div class="callout info">${m.note}</div>` : ''}
       <p><a href="#/topics/${m.topic}">Тема «${esc(topic(m.topic).title)}» с моделью →</a></p>`;
   }
   function problemBlock(p, short) {
     return `<p>${p.task}</p><div class="example">${esc(p.example)}</div>
       <h3>Идея решения</h3><p>${p.idea}</p>
-      <dl class="kv"><dt>Время</dt><dd>${p.time}</dd><dt>Память</dt><dd>${p.mem}</dd></dl>
+      <h3>Сложность</h3>${tmKv(p.time, p.mem, p.why)}
       ${codeBlock([{ label: p.file.split('/').pop(), src: C.files[p.file], file: p.file }], { download: true })}
       <p><a href="${lcUrl(p)}" target="_blank" rel="noopener">Открыть задачу на LeetCode ↗</a>${short ? ` · <a href="#/problems/${p.n}">страница задачи</a>` : ''}</p>`;
   }
+  const withTrainer = (exId, body) => `<div class="qtabs"><button class="on" data-qt="0">Разбор</button><button data-qt="1">✍ Написать самому${trainerDone(exId) ? ' ✓' : ''}</button></div>
+    <div data-qp="0">${body}</div><div data-qp="1" hidden><div data-trainer="${exId}"></div></div>`;
+  const trainerDone = id => window.TRAINER.solved().has(id);
   const qCard = (n, kind, title, body) => `<section class="card q"><div class="q-h"><span class="q-n">${n}</span><div><div class="q-kind">${kind}</div><h2>${title}</h2></div></div><div class="q-b">${body}</div></section>`;
 
   function ticketPage(n) {
@@ -225,9 +243,9 @@
     page(`<div class="wrap narrow">
       <div class="eyebrow"><a href="#/tickets">билеты</a> / раздел 2</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h1 style="margin:0">Билет ${n}</h1>${learnBtn(n)}</div>
-      ${qCard(1, 'теория', esc(Q[t.theory]), `<div class="exam-ans"><span class="lbl">ответ</span>${wrapTables(tp.exam)}</div><p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема с моделью и кодом →</a></p>`)}
-      ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), methodBlock(t.method))}
-      ${qCard(3, `задача LeetCode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span>`, `${esc(p.title)} <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, problemBlock(p, true))}
+      ${qCard(1, 'теория', esc(Q[t.theory]), `<div class="exam-ans"><span class="lbl">ответ</span>${examWithSpace(tp)}</div><p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема с моделью и кодом →</a></p>`)}
+      ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), withTrainer(t.method, methodBlock(t.method)))}
+      ${qCard(3, `задача LeetCode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span>`, `${esc(p.title)} <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, withTrainer('lc-' + p.n, problemBlock(p, true)))}
       <div class="ticket-nav">${prev ? `<a class="btn" href="#/tickets/${prev.n}">← Билет ${prev.n}</a>` : '<span></span>'}<a class="btn" href="#/exam">Случайный билет</a>${next ? `<a class="btn" href="#/tickets/${next.n}">Билет ${next.n} →</a>` : '<span></span>'}</div>
     </div>`, 'tickets');
   }
@@ -244,7 +262,7 @@
     page(`<div class="wrap narrow"><div class="eyebrow"><a href="#/problems">задачи</a> / leetcode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span></div>
       <h1>${esc(p.title)}</h1><p class="lead">${esc(p.ru)}</p>
       <div class="chips" style="margin:14px 0 26px">${p.tags.map(x => `<span class="chip acc">${esc(x)}</span>`).join('')}${chipsTickets(ticketsForProblem(p.n))}</div>
-      <div class="card" style="padding:22px"><h3 style="margin-top:0">Условие</h3>${problemBlock(p, false)}</div>
+      <div class="card" style="padding:22px">${withTrainer('lc-' + p.n, '<h3 style="margin-top:0">Условие</h3>' + problemBlock(p, false))}</div>
       <div class="ticket-nav">${prev ? `<a class="btn" href="#/problems/${prev.n}">← ${prev.n}. ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="btn" href="#/problems/${next.n}">${next.n}. ${esc(next.title)} →</a>` : ''}</div></div>`, 'problems');
   }
 
@@ -260,9 +278,9 @@
     page(`<div class="wrap narrow"><div class="eyebrow">тренировка</div>
       <div class="exam-top"><h1 style="margin:0">Билет ${t.n}</h1><div style="display:flex;gap:10px;align-items:center"><span class="timer" id="timer">00:00</span><button class="btn" id="again">Другой билет ↻</button></div></div>
       <p class="lead" style="margin-top:10px">Ответь на вопросы сам, засеки время, потом открой ответы. ${pool.length ? `Билеты берутся из ещё не выученных (${pool.length}).` : 'Все билеты выучены, берём любой.'}</p>
-      ${qCard(1, 'теория', esc(Q[t.theory]), hidden(`<div class="exam-ans">${wrapTables(tp.exam)}</div>`))}
-      ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), hidden(methodBlock(t.method)))}
-      ${qCard(3, `задача LeetCode ${p.n}`, esc(p.title) + ` <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, `<p>${p.task}</p><div class="example">${esc(p.example)}</div><div style="height:14px"></div>` + hidden(`<h3>Идея</h3><p>${p.idea}</p>${codeBlock([{ label: p.file.split('/').pop(), src: C.files[p.file] }])}`))}
+      ${qCard(1, 'теория', esc(Q[t.theory]), hidden(`<div class="exam-ans">${examWithSpace(tp)}</div>`))}
+      ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), `<p class="muted" style="font-size:14px">Напиши метод в редакторе и нажми «Проверить». Ответ — ниже.</p><div data-trainer="${t.method}"></div><h3>Ответ</h3>` + hidden(methodBlock(t.method)))}
+      ${qCard(3, `задача LeetCode ${p.n}`, esc(p.title) + ` <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, `<p>${p.task}</p><div class="example">${esc(p.example)}</div><div data-trainer="lc-${p.n}"></div><h3>Разбор</h3>` + hidden(`<h3>Идея</h3><p>${p.idea}</p>${codeBlock([{ label: p.file.split('/').pop(), src: C.files[p.file] }])}`))}
       <div class="ticket-nav"><span>${learnBtn(t.n)}</span><a class="btn" href="#/tickets/${t.n}">Открыть билет полностью →</a></div></div>`, 'exam');
     app.querySelectorAll('.reveal-btn').forEach(b => b.addEventListener('click', () => b.parentElement.classList.remove('hidden')));
     document.getElementById('again').addEventListener('click', exam);
@@ -288,6 +306,42 @@
     </div>`, 'teacher');
   }
 
+  // ---------- тренажёр ----------
+  const practiceItems = () => [
+    ...Object.entries(M).map(([id, m]) => ({ id, kind: 'метод', title: m.title, sub: 'билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', '), topic: m.topic })),
+    ...P.map(p => ({ id: 'lc-' + p.n, kind: 'LeetCode ' + p.n, title: p.title, sub: p.ru + ' · ' + p.diff + ' · билет ' + ticketsForProblem(p.n).join(', ') }))
+  ];
+  function practice() {
+    const done = window.TRAINER.solved(), items = practiceItems();
+    const n = items.filter(x => done.has(x.id)).length;
+    const row = x => `<a class="prow" href="#/practice/${x.id}"><span class="pn">${done.has(x.id) ? '<span style="color:var(--accent)">✓</span>' : '○'}</span><span class="pt"><b>${esc(x.title)}</b><span>${esc(x.sub)}</span></span><span></span><span class="ptk">${esc(x.kind)}</span></a>`;
+    page(`<div class="wrap"><div class="eyebrow">практика</div><h1>Тренажёр</h1>
+      <p class="lead">Пиши код прямо в браузере. «Запустить» выполняет твой код, «Проверить» прогоняет скрытые тесты с крайними случаями. Python работает на твоём устройстве, ничего устанавливать не нужно.</p>
+      <div class="card" style="padding:16px 20px;margin:24px 0 10px;max-width:420px"><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px"><span>Решено заданий</span><b>${n} / ${items.length}</b></div><div class="progress"><i style="width:${n / items.length * 100}%"></i></div></div>
+      <section class="sec" style="margin-top:28px"><div class="sec-h"><h2>Методы из билетов</h2></div><div class="card plist">${items.filter(x => x.kind === 'метод').map(row).join('')}</div></section>
+      <section class="sec"><div class="sec-h"><h2>Задачи LeetCode</h2></div><div class="card plist">${items.filter(x => x.kind !== 'метод').map(row).join('')}</div></section></div>`, 'practice');
+  }
+  function practicePage(id) {
+    const items = practiceItems(), i = items.findIndex(x => x.id === id);
+    if (i < 0) return notFound();
+    const prev = items[i - 1], next = items[i + 1];
+    let head;
+    if (M[id]) {
+      const m = M[id];
+      head = `<div class="eyebrow"><a href="#/practice">тренажёр</a> / метод</div><h1>${esc(m.title)}</h1>
+        <p class="lead">Реализуй метод в классе ниже: остальные методы уже написаны. Встречается в билетах ${TK.filter(t => t.method === id).map(t => `<a href="#/tickets/${t.n}">${t.n}</a>`).join(', ')}.</p>
+        <div class="chips" style="margin:12px 0 20px"><span class="chip" style="white-space:normal">время ${m.time}</span><span class="chip">память ${m.mem}</span><a class="chip" href="#/topics/${m.topic}">тема: ${esc(topic(m.topic).title)}</a></div>
+        <details class="hint"><summary>Подсказка: план решения</summary><ol class="steps">${m.steps.map(s => `<li>${s}</li>`).join('')}</ol><p class="muted">Крайние случаи: ${m.edges.join(' · ')}</p><p class="muted">${m.why}</p></details>`;
+    } else {
+      const p = prob(+id.slice(3));
+      head = `<div class="eyebrow"><a href="#/practice">тренажёр</a> / leetcode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span></div><h1>${esc(p.title)}</h1><p class="lead">${esc(p.ru)}</p>
+        <div class="card" style="padding:18px 20px;margin:18px 0"><p>${p.task}</p><div class="example">${esc(p.example)}</div></div>
+        <details class="hint"><summary>Подсказка: идея решения</summary><p>${p.idea}</p><p class="muted">Время ${p.time}, память ${p.mem}.</p><p class="muted">${p.why}</p></details>`;
+    }
+    page(`<div class="wrap narrow">${head}<div data-trainer="${id}"></div>
+      <div class="ticket-nav">${prev ? `<a class="btn" href="#/practice/${prev.id}">← ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="btn" href="#/practice/${next.id}">${esc(next.title)} →</a>` : ''}</div></div>`, 'practice');
+  }
+
   function notFound() { page(`<div class="wrap"><h1>Страница не найдена</h1><p><a href="#/">На главную</a></p></div>`, ''); }
 
   // ---------- роутер ----------
@@ -302,6 +356,8 @@
     else if (a === 'problems' && b) problemPage(+b);
     else if (a === 'problems') problems();
     else if (a === 'exam') exam();
+    else if (a === 'practice' && b) practicePage(b);
+    else if (a === 'practice') practice();
     else if (a === 'teacher') teacher();
     else notFound();
     window.scrollTo(0, 0);

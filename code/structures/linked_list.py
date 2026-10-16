@@ -30,7 +30,7 @@ class Linked_list:
         return self.head is None
 
     def _get_item(self, idx):
-        """Вернуть УЗЕЛ по индексу. O(n)"""
+        """Вернуть УЗЕЛ по индексу. Время O(n): idx шагов от head. Память O(1)."""
         if idx < 0 or idx >= self.size:
             raise IndexError("Index out of range")
         cur = self.head
@@ -44,12 +44,14 @@ class Linked_list:
         return self._get_item(idx).val
 
     def __setitem__(self, idx, value):
-        """lst[idx] = value. Находим узел и меняем значение. O(n)"""
+        """lst[idx] = value. Находим узел и меняем значение.
+        Время O(n) — поиск узла, память O(1) — только указатель."""
         target = self._get_item(idx)
         target.val = value
 
     def append(self, val):
-        """Добавить в конец. Без указателя на хвост — O(n)."""
+        """Добавить в конец. Время O(n): без указателя на хвост идём до конца.
+        Память O(1): создаём один узел."""
         new_node = Node(val)
         if self.head is None:          # список пустой
             self.head = new_node
@@ -61,7 +63,8 @@ class Linked_list:
         self.size += 1
 
     def insert(self, idx, val):
-        """Вставить val так, чтобы он оказался на позиции idx. O(n)"""
+        """Вставить val так, чтобы он оказался на позиции idx.
+        Время O(n) на поиск prev (в начало — O(1)), память O(1) — один узел."""
         if idx < 0 or idx > self.size:
             raise IndexError("Index out of range")
         new_node = Node(val)
@@ -75,7 +78,8 @@ class Linked_list:
         self.size += 1
 
     def remove(self, val):
-        """Удалить первое вхождение val. O(n)"""
+        """Удалить первое вхождение val.
+        Время O(n): в худшем случае проходим весь список. Память O(1): указатель cur."""
         if self.head is None:
             raise ValueError("Value not found")
         if self.head.val == val:       # удаляем голову
@@ -91,7 +95,7 @@ class Linked_list:
         self.size -= 1
 
     def pop(self, idx):
-        """Удалить элемент по индексу и вернуть его. O(n)"""
+        """Удалить элемент по индексу и вернуть его. Время O(n), память O(1)."""
         if idx < 0 or idx >= self.size:
             raise IndexError("Index out of range")
         if idx == 0:
