@@ -11,6 +11,8 @@
 
 # Для методов: из какого файла берём класс и какие методы «опустошаем».
 METHOD_EX = {
+    "stack-list":      ("structures/stack.py",             ["Stack.add", "Stack.remove", "Stack.peek"]),
+    "queue-list":      ("structures/queue.py",             ["Queue.add", "Queue.remove", "Queue.peek"]),
     "ll-remove":       ("structures/linked_list.py",        ["Linked_list.remove"]),
     "ll-append":       ("structures/linked_list.py",        ["Linked_list.append"]),
     "ll-reverse":      ("structures/linked_list.py",        ["Linked_list.reverse"]),
@@ -28,6 +30,8 @@ METHOD_EX = {
 }
 
 DEMO = {
+    "stack-list": 's = Stack()\nfor x in [1, 2, 3]:\n    s.add(x)\nprint(s.peek())     # ожидается 3\nprint(s.remove())   # ожидается 3\nprint(s)            # ожидается bottom -> [1, 2] <- top',
+    "queue-list": 'q = Queue()\nfor x in [1, 2, 3]:\n    q.add(x)\nprint(q.peek())     # ожидается 1\nprint(q.remove())   # ожидается 1\nprint(q)            # ожидается front -> [2, 3] <- back',
     "ll-remove": 'lst = Linked_list(1, 2, 3, 2)\nlst.remove(2)\nprint(lst)        # ожидается 1->3->2\nprint(len(lst))   # ожидается 3',
     "ll-append": 'lst = Linked_list()\nlst.append(1)\nlst.append(2)\nlst.append(3)\nprint(lst)        # ожидается 1->2->3',
     "ll-reverse": 'lst = Linked_list(1, 2, 3, 4)\nlst.reverse()\nprint(lst)        # ожидается 4->3->2->1',
@@ -126,6 +130,61 @@ _r.seed(7)
 '''
 
 TESTS = {
+"stack-list": r'''
+@test("add, затем peek показывает последний")
+def _():
+    s = Stack(); s.add(1); s.add(2); eq(s.peek(), 2, "peek()"); eq(len(s), 2, "len")
+@test("remove возвращает в обратном порядке (LIFO)")
+def _():
+    s = Stack()
+    for x in [1, 2, 3]: s.add(x)
+    eq([s.remove(), s.remove(), s.remove()], [3, 2, 1], "три remove()")
+@test("peek не удаляет элемент")
+def _():
+    s = Stack(); s.add(5); s.peek(); s.peek(); eq(len(s), 1, "len после двух peek")
+@test("пустой стек: remove → IndexError")
+def _():
+    raises(IndexError, lambda: Stack().remove(), "remove() на пустом")
+@test("пустой стек: peek → IndexError")
+def _():
+    raises(IndexError, lambda: Stack().peek(), "peek() на пустом")
+@test("случайные операции против list")
+def _():
+    s, ref = Stack(), []
+    for _ in range(2000):
+        if ref and _r.random() < .45: eq(s.remove(), ref.pop(), "remove()")
+        else:
+            v = _r.randint(0, 99); s.add(v); ref.append(v)
+        if ref: eq(s.peek(), ref[-1], "peek()")
+''',
+"queue-list": r'''
+@test("peek показывает первый добавленный")
+def _():
+    q = Queue(); q.add(1); q.add(2); eq(q.peek(), 1, "peek()"); eq(len(q), 2, "len")
+@test("remove в порядке добавления (FIFO)")
+def _():
+    q = Queue()
+    for x in [1, 2, 3]: q.add(x)
+    eq([q.remove(), q.remove(), q.remove()], [1, 2, 3], "три remove()")
+@test("peek не удаляет элемент")
+def _():
+    q = Queue(); q.add(5); q.peek(); q.peek(); eq(len(q), 1, "len после двух peek")
+@test("пустая очередь: remove → IndexError")
+def _():
+    raises(IndexError, lambda: Queue().remove(), "remove() на пустой")
+@test("пустая очередь: peek → IndexError")
+def _():
+    raises(IndexError, lambda: Queue().peek(), "peek() на пустой")
+@test("случайные операции против collections.deque")
+def _():
+    from collections import deque
+    q, ref = Queue(), deque()
+    for _ in range(2000):
+        if ref and _r.random() < .45: eq(q.remove(), ref.popleft(), "remove()")
+        else:
+            v = _r.randint(0, 99); q.add(v); ref.append(v)
+        if ref: eq(q.peek(), ref[0], "peek()")
+''',
 # ---------------- методы ----------------
 "ll-remove": r'''
 @test("удаление из середины")

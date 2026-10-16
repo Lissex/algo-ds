@@ -177,7 +177,7 @@
   function topicPage(id) {
     const t = topic(id); if (!t) return notFound();
     const i = T.indexOf(t), prev = T[i - 1], next = T[i + 1];
-    const codeItems = t.code.map(k => ({ label: snipLabel(k), src: snip(k), file: k.split('::')[0] }));
+    const codeItems = t.code.map((k, i) => ({ label: (t.codeLabels && t.codeLabels[i]) || snipLabel(k), src: snip(k), file: k.split('::')[0] }));
     const tks = ticketsForTopic(id);
     page(`<div class="wrap">
       <div class="eyebrow"><a href="#/topics">теория</a> / ${String(i + 1).padStart(2, '0')} · ${esc(t.tag)}</div>
@@ -233,6 +233,7 @@
   }
   const withTrainer = (exId, body) => `<div class="qtabs"><button class="on" data-qt="0">Разбор</button><button data-qt="1">✍ Написать самому${trainerDone(exId) ? ' ✓' : ''}</button></div>
     <div data-qp="0">${body}</div><div data-qp="1" hidden><div data-trainer="${exId}"></div></div>`;
+  const THEORY_EX = { stack: 'stack-list', queue: 'queue-list' };
   const trainerDone = id => window.TRAINER.solved().has(id);
   const qCard = (n, kind, title, body) => `<section class="card q"><div class="q-h"><span class="q-n">${n}</span><div><div class="q-kind">${kind}</div><h2>${title}</h2></div></div><div class="q-b">${body}</div></section>`;
 
@@ -243,7 +244,7 @@
     page(`<div class="wrap narrow">
       <div class="eyebrow"><a href="#/tickets">билеты</a> / раздел 2</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h1 style="margin:0">Билет ${n}</h1>${learnBtn(n)}</div>
-      ${qCard(1, 'теория', esc(Q[t.theory]), `<div class="exam-ans"><span class="lbl">ответ</span>${examWithSpace(tp)}</div><p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема с моделью и кодом →</a></p>`)}
+      ${qCard(1, 'теория', esc(Q[t.theory]), (() => { const body = `<div class="exam-ans"><span class="lbl">ответ</span>${examWithSpace(tp)}</div><p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема с моделью и кодом →</a></p>`; const ex = THEORY_EX[t.theory]; return ex ? withTrainer(ex, body) : body; })())}
       ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), withTrainer(t.method, methodBlock(t.method)))}
       ${qCard(3, `задача LeetCode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span>`, `${esc(p.title)} <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, withTrainer('lc-' + p.n, problemBlock(p, true)))}
       <div class="ticket-nav">${prev ? `<a class="btn" href="#/tickets/${prev.n}">← Билет ${prev.n}</a>` : '<span></span>'}<a class="btn" href="#/exam">Случайный билет</a>${next ? `<a class="btn" href="#/tickets/${next.n}">Билет ${next.n} →</a>` : '<span></span>'}</div>
@@ -308,7 +309,7 @@
 
   // ---------- тренажёр ----------
   const practiceItems = () => [
-    ...Object.entries(M).map(([id, m]) => ({ id, kind: 'метод', title: m.title, sub: 'билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', '), topic: m.topic })),
+    ...Object.entries(M).map(([id, m]) => { const own = TK.filter(t => t.method === id).map(t => t.n), th = TK.filter(t => t.theory === m.topic).map(t => t.n); return { id, kind: 'метод', title: m.title, sub: own.length ? 'билеты ' + own.join(', ') : 'теория, билет ' + th.join(', '), topic: m.topic }; }),
     ...P.map(p => ({ id: 'lc-' + p.n, kind: 'LeetCode ' + p.n, title: p.title, sub: p.ru + ' · ' + p.diff + ' · билет ' + ticketsForProblem(p.n).join(', ') }))
   ];
   function practice() {
@@ -329,7 +330,7 @@
     if (M[id]) {
       const m = M[id];
       head = `<div class="eyebrow"><a href="#/practice">тренажёр</a> / метод</div><h1>${esc(m.title)}</h1>
-        <p class="lead">Реализуй метод в классе ниже: остальные методы уже написаны. Встречается в билетах ${TK.filter(t => t.method === id).map(t => `<a href="#/tickets/${t.n}">${t.n}</a>`).join(', ')}.</p>
+        <p class="lead">${m.lead || 'Реализуй метод в классе ниже: остальные методы уже написаны.'} Встречается в билетах ${TK.filter(t => t.method === id || (m.lead && t.theory === m.topic)).map(t => `<a href="#/tickets/${t.n}">${t.n}</a>`).join(', ')}.</p>
         <div class="chips" style="margin:12px 0 20px"><span class="chip" style="white-space:normal">время ${m.time}</span><span class="chip">память ${m.mem}</span><a class="chip" href="#/topics/${m.topic}">тема: ${esc(topic(m.topic).title)}</a></div>
         <details class="hint"><summary>Подсказка: план решения</summary><ol class="steps">${m.steps.map(s => `<li>${s}</li>`).join('')}</ol><p class="muted">Крайние случаи: ${m.edges.join(' · ')}</p><p class="muted">${m.why}</p></details>`;
     } else {
@@ -372,7 +373,7 @@
   T.forEach(t => idx.push({ k: 'тема', t: t.title, s: t.summary, u: `#/topics/${t.id}`, x: strip(t.tag + ' ' + t.exam + ' ' + t.body) }));
   TK.forEach(t => idx.push({ k: 'билет', t: `Билет ${t.n}`, s: `${Q[t.theory]} · ${M[t.method].title} · LeetCode ${t.lc}`, u: `#/tickets/${t.n}`, x: `билет ${t.n} ${Q[t.theory]} ${M[t.method].title} ${prob(t.lc).title}` }));
   P.forEach(p => idx.push({ k: 'задача', t: `${p.n}. ${p.title}`, s: p.ru, u: `#/problems/${p.n}`, x: strip(`${p.n} ${p.title} ${p.ru} ${p.tags.join(' ')} ${p.task} ${p.idea}`) }));
-  Object.entries(M).forEach(([id, m]) => idx.push({ k: 'метод', t: m.title, s: 'Билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', '), u: `#/tickets/${TK.find(t => t.method === id).n}`, x: strip(m.steps.join(' ')) }));
+  Object.entries(M).forEach(([id, m]) => idx.push({ k: 'метод', t: m.title, s: TK.some(t => t.method === id) ? 'Билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', ') : 'Тренажёр', u: TK.find(t => t.method === id) ? `#/tickets/${TK.find(t => t.method === id).n}` : `#/practice/${id}`, x: strip(m.steps.join(' ')) }));
   const modal = document.getElementById('searchModal'), inp = document.getElementById('searchInput'), res = document.getElementById('searchResults');
   let sel = 0, found = [];
   const norm = s => s.toLowerCase().replace(/ё/g, 'е');

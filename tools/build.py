@@ -73,8 +73,9 @@ def demo_block(demo):
 exercises = {}
 for ex_id, (fname, names) in spec.METHOD_EX.items():
     src = files[fname]
+    main_part = src.split("# ---------- Другой вариант")[0].rstrip() + "\n"   # альтернативы в заготовку не кладём
     exercises[ex_id] = {
-        "starter": blank_methods(src, names) .rstrip() + demo_block(spec.DEMO[ex_id]),
+        "starter": blank_methods(main_part, names).rstrip() + demo_block(spec.DEMO[ex_id]),
         "solution": src,
         "tests": spec.TESTS[ex_id],
     }
@@ -93,3 +94,18 @@ out2.write_text(
     encoding="utf-8",
 )
 print(f"OK: {len(exercises)} заданий тренажёра -> {out2.relative_to(ROOT)}")
+
+
+# ---------- Метка версии для index.html (чтобы браузер не брал старые файлы из кэша) ----------
+import hashlib
+import re
+
+index = ROOT / "index.html"
+html = index.read_text(encoding="utf-8")
+def _bust(m):
+    path = m.group(2)
+    digest = hashlib.md5((ROOT / path).read_bytes()).hexdigest()[:8]
+    return f'{m.group(1)}{path}?v={digest}"'
+html = re.sub(r'((?:src|href)=")(assets/[\w.-]+\.(?:js|css))(?:\?v=\w+)?"', _bust, html)
+index.write_text(html, encoding="utf-8")
+print("OK: метки версий в index.html обновлены")

@@ -1,13 +1,51 @@
+class Queue:
+    """Очередь (FIFO — First In, First Out) на списке Python — так делали на парах.
+    Добавляем в конец списка, забираем из начала (индекс 0).
+    Сама очередь занимает O(n)."""
+
+    def __init__(self):
+        self.data = []
+
+    def add(self, val):
+        """Поставить элемент в конец очереди (enqueue).
+        Время O(1) амортизированно (list.append), память O(1)."""
+        self.data.append(val)
+
+    def remove(self):
+        """Забрать элемент из начала очереди (dequeue).
+        Время O(n): после pop(0) все остальные элементы сдвигаются на одну позицию влево.
+        Память O(1)."""
+        if not self.data:
+            raise IndexError("remove from empty queue")
+        return self.data.pop(0)
+
+    def peek(self):
+        """Посмотреть первый элемент, не удаляя его. Время O(1), память O(1)."""
+        if not self.data:
+            raise IndexError("peek from empty queue")
+        return self.data[0]
+
+    def is_empty(self):
+        return len(self.data) == 0
+
+    def __len__(self):
+        return len(self.data)
+
+    def __str__(self):
+        return "front -> " + str(self.data) + " <- back"
+
+
+# ---------- Другой вариант 1: очередь на связанном списке ----------
+
 class Node:
     def __init__(self, val):
         self.val = val
         self.next = None
 
 
-class Queue:
-    """Очередь (FIFO — First In, First Out) на связанном списке.
-    Добавляем в хвост (tail), забираем из головы (head) — обе операции O(1) по времени и O(1) по памяти.
-    Сама очередь занимает O(n): n узлов."""
+class LinkedQueue:
+    """Очередь на связанном списке с указателями head и tail.
+    Добавляем в хвост, забираем из головы — обе операции O(1) по времени и памяти."""
 
     def __init__(self):
         self.head = None   # отсюда забираем
@@ -15,7 +53,7 @@ class Queue:
         self.size = 0
 
     def add(self, val):
-        """Поставить элемент в конец очереди (enqueue). Время O(1), память O(1) — один узел."""
+        """Время O(1): tail известен, не нужно идти по списку. Память O(1) — один узел."""
         new_node = Node(val)
         if self.tail is None:          # очередь пустая
             self.head = self.tail = new_node
@@ -25,7 +63,7 @@ class Queue:
         self.size += 1
 
     def remove(self):
-        """Забрать элемент из начала очереди (dequeue). Время O(1), память O(1)."""
+        """Время O(1): просто сдвигаем head. Память O(1)."""
         if self.head is None:
             raise IndexError("remove from empty queue")
         val = self.head.val
@@ -36,7 +74,6 @@ class Queue:
         return val
 
     def peek(self):
-        """Посмотреть первый элемент, не удаляя его. Время O(1), память O(1)."""
         if self.head is None:
             raise IndexError("peek from empty queue")
         return self.head.val
@@ -47,10 +84,34 @@ class Queue:
     def __len__(self):
         return self.size
 
-    def __str__(self):
-        items = []
-        cur = self.head
-        while cur:
-            items.append(str(cur.val))
-            cur = cur.next
-        return "front -> [" + ", ".join(items) + "] <- back"
+
+# ---------- Другой вариант 2: очередь на collections.deque ----------
+
+from collections import deque
+
+
+class DequeQueue:
+    """Очередь на встроенном deque — так обычно пишут в реальном коде.
+    append и popleft — O(1), ничего не сдвигается."""
+
+    def __init__(self):
+        self.data = deque()
+
+    def add(self, val):
+        self.data.append(val)
+
+    def remove(self):
+        if not self.data:
+            raise IndexError("remove from empty queue")
+        return self.data.popleft()
+
+    def peek(self):
+        if not self.data:
+            raise IndexError("peek from empty queue")
+        return self.data[0]
+
+    def is_empty(self):
+        return not self.data
+
+    def __len__(self):
+        return len(self.data)

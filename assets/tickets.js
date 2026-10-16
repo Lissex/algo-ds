@@ -1,6 +1,34 @@
 // Методы (практическая часть билетов), билеты раздела 2 и задачи LeetCode.
 
 window.METHODS = {
+  "stack-list": {
+    title: "Стек на списке: add, remove, peek",
+    lead: "Допиши три метода стека. Храни элементы в списке <code>self.data</code>, как на парах.",
+    topic: "stack",
+    snip: "structures/stack.py::Stack",
+    time: "O(1) у всех трёх", mem: "O(1)",
+    why: "<b>Время:</b> вершина — конец списка: <code>append</code> и <code>pop()</code> работают с последним элементом и ничего не сдвигают (append — амортизированно O(1)). <b>Память:</b> на операцию — константа; сам стек занимает O(n).",
+    steps: [
+      "<code>add(val)</code>: кладём в конец списка — <code>self.data.append(val)</code>.",
+      "<code>remove()</code>: если список пуст — <code>IndexError</code>; иначе <code>return self.data.pop()</code> (последний элемент — вершина).",
+      "<code>peek()</code>: если пуст — <code>IndexError</code>; иначе <code>return self.data[-1]</code>, ничего не удаляя."
+    ],
+    edges: ["пустой стек → IndexError", "peek не меняет стек", "порядок LIFO"]
+  },
+  "queue-list": {
+    title: "Очередь на списке: add, remove, peek",
+    lead: "Допиши три метода очереди. Храни элементы в списке <code>self.data</code>, как на парах.",
+    topic: "queue",
+    snip: "structures/queue.py::Queue",
+    time: "add и peek — O(1), remove — O(n)", mem: "O(1)",
+    why: "<b>Время:</b> <code>append</code> пишет в конец — O(1); <code>pop(0)</code> удаляет первый элемент, и все остальные сдвигаются влево — O(n). <b>Память:</b> сдвиг происходит на месте, дополнительная память — константа.",
+    steps: [
+      "<code>add(val)</code>: ставим в конец — <code>self.data.append(val)</code>.",
+      "<code>remove()</code>: если пусто — <code>IndexError</code>; иначе забираем первый: <code>return self.data.pop(0)</code>.",
+      "<code>peek()</code>: если пусто — <code>IndexError</code>; иначе <code>return self.data[0]</code>."
+    ],
+    edges: ["пустая очередь → IndexError", "peek не меняет очередь", "порядок FIFO"]
+  },
   "ll-remove": {
     title: "remove для связанного списка",
     topic: "linked-list",

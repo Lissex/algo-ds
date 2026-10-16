@@ -8,7 +8,7 @@ L = {p.stem.split('_')[0]: load(p) for p in (ROOT/'leetcode').glob('*.py')}
 random.seed(1)
 
 # Stack / Queue
-for cls in (S['stack'].Stack, S['stack'].ArrayStack):
+for cls in (S['stack'].Stack, S['stack'].LinkedStack):
     st, ref = cls(), []
     for _ in range(2000):
         if ref and random.random() < .45:
@@ -16,14 +16,15 @@ for cls in (S['stack'].Stack, S['stack'].ArrayStack):
         else:
             v = random.randint(0, 99); st.add(v); ref.append(v)
         assert len(st) == len(ref)
-q, ref = S['queue'].Queue(), collections.deque()
-for _ in range(2000):
-    if ref and random.random() < .45:
-        assert q.peek() == ref[0]; assert q.remove() == ref.popleft()
-    else:
-        v = random.randint(0, 99); q.add(v); ref.append(v)
-    assert len(q) == len(ref)
-for e in (S['stack'].Stack().remove, S['queue'].Queue().peek):
+for qcls in (S['queue'].Queue, S['queue'].LinkedQueue, S['queue'].DequeQueue):
+    q, ref = qcls(), collections.deque()
+    for _ in range(2000):
+        if ref and random.random() < .45:
+            assert q.peek() == ref[0]; assert q.remove() == ref.popleft()
+        else:
+            v = random.randint(0, 99); q.add(v); ref.append(v)
+        assert len(q) == len(ref)
+for e in (S['stack'].Stack().remove, S['stack'].LinkedStack().peek, S['queue'].Queue().peek, S['queue'].LinkedQueue().remove, S['queue'].DequeQueue().remove):
     try: e(); assert False
     except IndexError: pass
 

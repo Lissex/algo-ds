@@ -32,9 +32,9 @@
 
   // ---------- Стек ----------
   function stack(el) {
-    const { stage, log, $, on } = shell(el, 'Модель стека', `
+    const { stage, log, $, on } = shell(el, 'Модель стека на списке', `
       <input data-i="v" placeholder="знач." aria-label="значение">
-      <button class="p" data-a="add">add</button><button data-a="remove">remove</button><button data-a="peek">peek</button>
+      <button class="p" data-a="add">add → append</button><button data-a="remove">remove → pop()</button><button data-a="peek">peek → [-1]</button>
       <span class="sep"></span><button data-a="clear">очистить</button>`);
     let st = [{ v: 3, id: uid++ }, { v: 7, id: uid++ }, { v: 1, id: uid++ }], fresh = -1, flash = -1, n = 4;
     const draw = () => {
@@ -43,32 +43,36 @@
         : '<div class="vempty">стек пуст: top = None</div>';
       fresh = flash = -1;
     };
-    on('add', () => { const inp = $('[data-i=v]'); const v = val(inp, n++); inp.value = ''; const x = { v, id: uid++ }; st.push(x); fresh = x.id; draw(); log(`add(${esc(v)}) → кладём на вершину · size = ${st.length}`); });
-    on('remove', () => { if (!st.length) return log(err('IndexError: remove from empty stack')); const x = st.pop(); draw(); log(`remove() → ${ok(esc(x.v))} · снят верхний элемент`); });
+    on('add', () => { const inp = $('[data-i=v]'); const v = val(inp, n++); inp.value = ''; const x = { v, id: uid++ }; st.push(x); fresh = x.id; draw(); log(`add(${esc(v)}) → data.append(${esc(v)}) · на вершину (конец списка) · len = ${st.length}`); });
+    on('remove', () => { if (!st.length) return log(err('IndexError: remove from empty stack')); const x = st.pop(); draw(); log(`remove() → ${ok(esc(x.v))} · data.pop(): последний элемент, ничего не сдвигается — O(1)`); });
     on('peek', () => { if (!st.length) return log(err('IndexError: peek from empty stack')); flash = st[st.length - 1].id; draw(); log(`peek() → ${ok(esc(st[st.length - 1].v))} · стек не изменился`); });
     on('clear', () => { st = []; draw(); log('стек очищен'); });
-    draw(); log('LIFO: добавляем и снимаем только сверху');
+    draw(); log('LIFO: вершина — конец списка, append и pop() работают за O(1)');
   }
 
-  // ---------- Очередь ----------
+  // ---------- Очередь (на списке Python, как на парах) ----------
   function queue(el) {
-    const { stage, log, $, on } = shell(el, 'Модель очереди', `
+    const { stage, log, $, on } = shell(el, 'Модель очереди на списке', `
       <input data-i="v" placeholder="знач." aria-label="значение">
-      <button class="p" data-a="add">add</button><button data-a="remove">remove</button><button data-a="peek">peek</button>
+      <button class="p" data-a="add">add → append</button><button data-a="remove">remove → pop(0)</button><button data-a="peek">peek → [0]</button>
       <span class="sep"></span><button data-a="clear">очистить</button>`);
-    let q = ['A', 'B', 'C'].map(v => ({ v, id: uid++ })), fresh = -1, flash = -1, n = 0;
+    let q = ['A', 'B', 'C'].map(v => ({ v, id: uid++ })), fresh = -1, flash = -1, shifted = false, n = 0;
     const names = 'DEFGHIJKLMNOPQRSTUVWXYZ';
     const draw = () => {
-      stage.innerHTML = q.length ? `<div class="vrow">${q.map((x, i) =>
-        `<div class="vn ${x.id === fresh ? 'new' : ''} ${x.id === flash ? 'flash' : ''}">${esc(x.v)}${i === 0 && i === q.length - 1 ? '<span class="tag">head·tail</span>' : i === 0 ? '<span class="tag">head</span>' : i === q.length - 1 ? '<span class="tag">tail</span>' : ''}</div>${i < q.length - 1 ? '<span class="varr">→</span>' : ''}`).join('')}
-        <span class="varr">→</span><span class="vnone">None</span></div>` : '<div class="vempty">очередь пуста: head = tail = None</div>';
-      fresh = flash = -1;
+      stage.innerHTML = q.length ? `<div class="vrow" style="gap:6px">${q.map((x, i) =>
+        `<div class="vn ${x.id === fresh ? 'new' : ''} ${x.id === flash || (shifted && x.id !== fresh) ? 'flash' : ''}"><span class="ix">[${i}]</span>${esc(x.v)}${i === 0 ? '<span class="tag">начало</span>' : i === q.length - 1 ? '<span class="tag">конец</span>' : ''}</div>`).join('')}</div>`
+        : '<div class="vempty">очередь пуста: data = []</div>';
+      fresh = flash = -1; shifted = false;
     };
-    on('add', () => { const inp = $('[data-i=v]'); const v = val(inp, names[n++ % names.length]); inp.value = ''; const x = { v, id: uid++ }; q.push(x); fresh = x.id; draw(); log(`add(${esc(v)}) → tail.next = node; tail = node · size = ${q.length}`); });
-    on('remove', () => { if (!q.length) return log(err('IndexError: remove from empty queue')); const x = q.shift(); draw(); log(`remove() → ${ok(esc(x.v))} · head = head.next${q.length ? '' : '; очередь опустела → tail = None'}`); });
-    on('peek', () => { if (!q.length) return log(err('IndexError: peek from empty queue')); flash = q[0].id; draw(); log(`peek() → ${ok(esc(q[0].v))}`); });
+    on('add', () => { const inp = $('[data-i=v]'); const v = val(inp, names[n++ % names.length]); inp.value = ''; const x = { v, id: uid++ }; q.push(x); fresh = x.id; draw(); log(`add(${esc(v)}) → data.append(${esc(v)}) · в конец, O(1) · len = ${q.length}`); });
+    on('remove', () => {
+      if (!q.length) return log(err('IndexError: remove from empty queue'));
+      const x = q.shift(); shifted = q.length > 0; draw();
+      log(`remove() → ${ok(esc(x.v))} · data.pop(0): ${q.length ? `остальные ${q.length} элемент(а) сдвинулись на позицию влево — поэтому O(n)` : 'очередь опустела'}`);
+    });
+    on('peek', () => { if (!q.length) return log(err('IndexError: peek from empty queue')); flash = q[0].id; draw(); log(`peek() → ${ok(esc(q[0].v))} · data[0], очередь не изменилась`); });
     on('clear', () => { q = []; draw(); log('очередь очищена'); });
-    draw(); log('FIFO: добавляем в хвост, забираем из головы');
+    draw(); log('FIFO: append в конец, pop(0) из начала. Нажми remove — увидишь сдвиг индексов');
   }
 
   // ---------- Связанные списки ----------
