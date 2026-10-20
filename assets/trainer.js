@@ -185,7 +185,7 @@ onmessage = async (e) => {
     const btns = root.querySelectorAll('.tr-acts button');
     const busy = b => btns.forEach(x => x.disabled = b);
     const show = html => { outEl.hidden = false; outEl.innerHTML = html; };
-    const TO = `<div class="tr-err">⏱ Код выполнялся дольше ${TIME_LIMIT / 1000} с и был остановлен. Скорее всего, где-то бесконечный цикл: проверь, что указатель внутри <code>while</code> сдвигается (<code>cur = cur.next</code>).</div>`;
+    const TO = `<div class="tr-err">⏱ Код выполнялся дольше ${TIME_LIMIT / 1000} с и был остановлен. Скорее всего, бесконечный цикл (проверь, что указатели/границы внутри <code>while</code> сдвигаются) или слишком медленный алгоритм — например, рекурсия без мемоизации или O(n²) там, где нужно O(n).</div>`;
 
     async function run() {
       busy(true); show('<div class="muted">выполняю…</div>');

@@ -851,6 +851,8 @@ def __run_tests(user_code, common, tests_code):
         return deco
     tns = dict(ns)
     tns["test"] = test
+    tns["SOURCE"] = user_code
+    tns["__user_ns__"] = ns
     exec(common, tns)
     exec(tests_code, tns)
     res = []

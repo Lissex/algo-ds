@@ -13,8 +13,43 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
   };
-  let learned = new Set(store.get('learned', []));
-  const toggleLearned = n => { learned.has(n) ? learned.delete(n) : learned.add(n); store.set('learned', [...learned]); };
+  // выбранный раздел: 1 — алгоритмы, 2 — структуры данных
+  let SEC = store.get('sec', 2) === 1 ? 1 : 2;
+  const QS = window.QUESTIONS1 || [];
+  const LEARN_KEY = { 1: 'learned1', 2: 'learned' };
+  const learnedSets = { 1: new Set(store.get('learned1', [])), 2: new Set(store.get('learned', [])) };
+  let learned = learnedSets[SEC];
+  const toggleLearned = (n, sec = SEC) => { const L = learnedSets[sec]; L.has(n) ? L.delete(n) : L.add(n); store.set(LEARN_KEY[sec], [...L]); };
+  const TS = () => T.filter(t => t.section === SEC);
+  const PS = () => P.filter(p => p.section === SEC);
+  const qOfTopic = id => QS.filter(q => q.topic === id).map(q => q.n);
+  function setSec(s, silent) {
+    SEC = s === 1 ? 1 : 2; learned = learnedSets[SEC]; store.set('sec', SEC);
+    document.querySelectorAll('.sec-switch button').forEach(b => b.classList.toggle('on', +b.dataset.sec === SEC));
+    const tk = document.querySelector('[data-nav=tickets]');
+    if (tk) { tk.textContent = SEC === 1 ? 'Вопросы' : 'Билеты'; tk.setAttribute('href', SEC === 1 ? '#/q' : '#/tickets'); }
+    const te = document.querySelector('[data-nav=teacher]'); if (te) te.hidden = SEC === 1;
+    const sm = document.querySelector('.logo-text small'); if (sm) sm.textContent = 'раздел ' + SEC;
+  }
+
+  // ---------- переключатель разделов ----------
+  (function () {
+    const tools = document.querySelector('.top-tools');
+    const sw = document.createElement('div');
+    sw.className = 'sec-switch'; sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', 'Раздел');
+    sw.innerHTML = '<button data-sec="1" title="Алгоритмы">Раздел 1</button><button data-sec="2" title="Структуры данных">Раздел 2</button>';
+    tools.insertBefore(sw, tools.firstChild);
+    sw.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const s = +b.dataset.sec; if (s === SEC) return;
+      setSec(s);
+      const a = location.hash.replace(/^#\/?/, '').split('/')[0];
+      const listOf = { topics: '#/topics', tickets: s === 1 ? '#/q' : '#/tickets', q: s === 1 ? '#/q' : '#/tickets', problems: '#/problems', practice: '#/practice', exam: '#/exam', teacher: '#/' };
+      const target = listOf[a] || '#/';
+      if (location.hash === target || (target === '#/' && !a)) route(); else location.hash = target;
+    });
+  })();
+  setSec(SEC);
 
   // ---------- тема ----------
   document.getElementById('themeBtn').addEventListener('click', () => {
@@ -84,12 +119,13 @@
       if (more) more.addEventListener('click', () => { cb.classList.remove('collapsed'); more.remove(); });
     });
   }
-  const snip = k => (C.snip[k] || '');
+  const snip = k => k.endsWith('::*') ? (C.files[k.slice(0, -3)] || '') : (C.snip[k] || '');
   const fileLabel = k => k.split('::')[0].split('/').pop();
-  const snipLabel = k => { const [f, n] = k.split('::'); return n.includes('.') ? n.split('.').pop() + '()' : f.split('/').pop(); };
+  const snipLabel = k => { const [f, n] = k.split('::'); return n === '*' ? f.split('/').pop() : n.includes('.') ? n.split('.').pop() + '()' : n + (/^[a-z_]/.test(n) ? '()' : ''); };
 
   // ---------- общие куски ----------
   const ticketsForTopic = id => TK.filter(t => t.theory === id || M[t.method].topic === id).map(t => t.n);
+  const chipsQ = ns => ns.map(n => `<a class="chip" href="#/q/${n}">вопрос ${n}</a>`).join('');
   const ticketsForProblem = n => TK.filter(t => t.lc === n).map(t => t.n);
   const chipsTickets = ns => ns.map(n => `<a class="chip" href="#/tickets/${n}">билет ${n}</a>`).join('');
   const opsTable = ops => `<div class="tbl-wrap"><table class="ops"><tr><th>Операция</th><th>Время</th><th>Память</th><th>Почему так</th></tr>${ops.map(o => `<tr><td>${esc(o[0])}</td><td>${esc(o[1])}</td><td>${esc(o[2])}</td><td>${esc(o[3])}</td></tr>`).join('')}</table></div>`;
@@ -124,7 +160,7 @@
     }));
   }
   const learnBtn = n => `<button class="learn ${learned.has(n) ? 'on' : ''}" data-learn="${n}">${learned.has(n) ? '✓ выучен' : 'отметить выученным'}</button>`;
-  const progHtml = () => `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px"><span>Выучено билетов</span><b>${learned.size} / ${TK.length}</b></div><div class="progress"><i style="width:${learned.size / TK.length * 100}%"></i></div>`;
+  const progHtml = () => { const tot = SEC === 1 ? QS.length : TK.length; return `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px"><span>Выучено ${SEC === 1 ? 'вопросов' : 'билетов'}</span><b>${learned.size} / ${tot}</b></div><div class="progress"><i style="width:${learned.size / tot * 100}%"></i></div>`; };
 
   function ticketCard(t) {
     const p = prob(t.lc);
@@ -136,7 +172,7 @@
 
   // ---------- страницы ----------
   function home() {
-    const heroArt = `<div class="hero-art" aria-hidden="true">
+    const heroArt2 = `<div class="hero-art" aria-hidden="true">
       <div class="ha-lbl">linked list</div>
       <div class="ha-row"><span class="ha-arr" style="padding-left:0">head</span><span class="ha-arr">→</span><span class="ha-node on">5</span><span class="ha-arr">→</span><span class="ha-node">8</span><span class="ha-arr">→</span><span class="ha-node">2</span><span class="ha-arr">→</span><span class="ha-arr blink">None</span></div>
       <div class="ha-lbl">hashset · buckets</div>
@@ -146,55 +182,80 @@
       <div class="ha-lbl">stack · LIFO</div>
       <div class="ha-row"><span class="ha-node">1</span><span class="ha-node" style="margin-left:5px">7</span><span class="ha-node on" style="margin-left:5px">3</span><span class="ha-arr blink">← top</span></div>
     </div>`;
+    const hb = [12, 20, 7, 28, 16, 24, 9, 31, 14, 22];
+    const heroArt1 = `<div class="hero-art" aria-hidden="true">
+      <div class="ha-lbl">sorting · O(n log n)</div>
+      <div style="display:flex;align-items:flex-end;gap:5px;height:120px;margin:12px 0 18px">${hb.map((v, i) => `<div style="flex:1;height:${v / 31 * 100}%;border-radius:4px 4px 1px 1px;background:${i === 3 || i === 7 ? '#c8f53c' : '#3a3f49'}"></div>`).join('')}</div>
+      <div class="ha-lbl">binary search · O(log n)</div>
+      <div class="ha-row">${[3, 8, 15, 21, 34, 42, 57].map((v, i) => `<span class="ha-node ${i === 3 ? 'on' : ''}" style="margin-right:4px;${i < 2 || i > 5 ? 'opacity:.35' : ''}">${v}</span>`).join('')}</div>
+      <div class="ha-lbl">recursion</div>
+      <div class="ha-row" style="font-size:13px;color:#c5c8ce">fib(n) = fib(n−1) + fib(n−2)<span class="ha-arr blink">▍</span></div>
+    </div>`;
+    const ts = TS(), ps = PS();
+    const s1 = SEC === 1;
     page(`<div class="wrap">
       <section class="hero">
-        <div><div class="eyebrow">алгоритмы и структуры данных · раздел 2</div>
-          <h1>Структуры данных <em>без зубрёжки</em></h1>
+        <div><div class="eyebrow">алгоритмы и структуры данных · раздел ${SEC}</div>
+          ${s1 ? `<h1>Алгоритмы <em>без зубрёжки</em></h1>
+          <p class="lead">Big O, сортировки, рекурсия, бинарный поиск, два указателя и скользящее окно. Теория с пошаговыми анимациями, ответы на 15 вопросов и разбор 18 задач LeetCode на Python.</p>
+          <div class="hero-cta"><a class="btn pri" href="#/q">Вопросы →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>`
+          : `<h1>Структуры данных <em>без зубрёжки</em></h1>
           <p class="lead">Стек, очередь, связанные списки, deque, кольцевой массив и хэширование. Теория с живыми моделями, 15 билетов с готовыми ответами и разбор 14 задач LeetCode на Python.</p>
-          <div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>
-        </div>${heroArt}
+          <div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>`}
+        </div>${s1 ? heroArt1 : heroArt2}
       </section>
       <div class="stats">
-        <a class="card stat" href="#/topics" style="text-decoration:none;color:inherit"><b>${T.length}</b><span>тем с моделями</span></a>
-        <a class="card stat" href="#/tickets" style="text-decoration:none;color:inherit"><b>${TK.length}</b><span>билетов с ответами</span></a>
-        <a class="card stat" href="#/problems" style="text-decoration:none;color:inherit"><b>${P.length}</b><span>задач LeetCode</span></a>
+        <a class="card stat" href="#/topics" style="text-decoration:none;color:inherit"><b>${ts.length}</b><span>тем с ${s1 ? 'анимациями' : 'моделями'}</span></a>
+        <a class="card stat" href="${s1 ? '#/q' : '#/tickets'}" style="text-decoration:none;color:inherit"><b>${s1 ? QS.length : TK.length}</b><span>${s1 ? 'вопросов' : 'билетов'} с ответами</span></a>
+        <a class="card stat" href="#/problems" style="text-decoration:none;color:inherit"><b>${ps.length}</b><span>задач LeetCode</span></a>
         <div class="card stat" id="prog" style="display:flex;flex-direction:column;justify-content:center">${progHtml()}</div>
       </div>
       <section class="sec"><div class="sec-h"><h2>Темы</h2><a href="#/topics">все темы →</a></div>
-        <div class="grid g3">${T.map((t, i) => topicCard(t, i)).join('')}</div></section>
-      <section class="sec"><div class="sec-h"><h2>Билеты</h2><a href="#/tickets">все билеты →</a></div>
-        <div class="grid g3">${TK.slice(0, 6).map(ticketCard).join('')}</div></section>
+        <div class="grid g3">${ts.map((t, i) => topicCard(t, i)).join('')}</div></section>
+      <section class="sec"><div class="sec-h"><h2>${s1 ? 'Вопросы' : 'Билеты'}</h2><a href="${s1 ? '#/q' : '#/tickets'}">все ${s1 ? 'вопросы' : 'билеты'} →</a></div>
+        <div class="grid g3">${s1 ? QS.slice(0, 6).map(questionCard).join('') : TK.slice(0, 6).map(ticketCard).join('')}</div></section>
+      <p class="muted" style="margin-top:36px;font-size:14px">Другой раздел — переключатель «Раздел 1 · Раздел 2» в шапке.</p>
     </div>`, '');
   }
-  const topicCard = (t, i) => `<a class="card tcard" href="#/topics/${t.id}"><span class="num">${String(i + 1).padStart(2, '0')} · ${esc(t.tag)}</span><h3>${esc(t.title)}</h3><p>${esc(t.summary)}</p><div class="chips">${ticketsForTopic(t.id).map(n => `<span class="chip">б. ${n}</span>`).join('')}</div></a>`;
+  const topicCard = (t, i) => `<a class="card tcard" href="#/topics/${t.id}"><span class="num">${String(i + 1).padStart(2, '0')} · ${esc(t.tag)}</span><h3>${esc(t.title)}</h3><p>${esc(t.summary)}</p><div class="chips">${t.section === 1 ? qOfTopic(t.id).map(n => `<span class="chip">в. ${n}</span>`).join('') : ticketsForTopic(t.id).map(n => `<span class="chip">б. ${n}</span>`).join('')}</div></a>`;
+  function questionCard(q) {
+    const tp = topic(q.topic);
+    return `<a class="card tk ${learned.has(q.n) ? 'done' : ''}" href="#/q/${q.n}">
+      <div class="tk-h"><span class="tk-n"><small>вопрос</small>${q.n}</span>${q.ex ? '<span class="chip">✍ код</span>' : ''}</div>
+      <p class="q-text">${esc(q.text)}</p>
+      <div>${learnBtn(q.n)}</div></a>`;
+  }
 
   function topics() {
-    page(`<div class="wrap"><div class="eyebrow">теория</div><h1>Темы раздела 2</h1>
-      <p class="lead">В каждой теме: короткий ответ для экзамена, подробное объяснение, интерактивная модель, сложность операций и код на Python.</p>
-      <div class="grid g3" style="margin-top:28px">${T.map(topicCard).join('')}</div></div>`, 'topics');
+    page(`<div class="wrap"><div class="eyebrow">теория</div><h1>Темы раздела ${SEC}</h1>
+      <p class="lead">В каждой теме: короткий ответ для экзамена, подробное объяснение, ${SEC === 1 ? 'пошаговая анимация' : 'интерактивная модель'}, время и память и код на Python.</p>
+      <div class="grid g3" style="margin-top:28px">${TS().map(topicCard).join('')}</div></div>`, 'topics');
   }
 
   function topicPage(id) {
     const t = topic(id); if (!t) return notFound();
-    const i = T.indexOf(t), prev = T[i - 1], next = T[i + 1];
+    if (t.section !== SEC) setSec(t.section);
+    const TT = TS(), i = TT.indexOf(t), prev = TT[i - 1], next = TT[i + 1];
     const codeItems = t.code.map((k, i) => ({ label: (t.codeLabels && t.codeLabels[i]) || snipLabel(k), src: snip(k), file: k.split('::')[0] }));
-    const tks = ticketsForTopic(id);
+    const tks = t.section === 1 ? [] : ticketsForTopic(id), qs = t.section === 1 ? qOfTopic(id) : [];
+    const relProbs = P.filter(p => p.topic === id);
     page(`<div class="wrap">
       <div class="eyebrow"><a href="#/topics">теория</a> / ${String(i + 1).padStart(2, '0')} · ${esc(t.tag)}</div>
       <h1>${esc(t.title)}</h1><p class="lead">${esc(t.summary)}</p>
       <div class="topic-layout"><article class="prose">
         <section id="exam"><div class="exam-ans"><span class="lbl">ответ на экзамене</span>${examWithSpace(t)}</div></section>
-        ${t.viz ? `<section id="model"><h2>Модель</h2><div data-viz="${t.viz}"></div></section>` : ''}
+        ${t.viz ? `<section id="model"><h2>${t.section === 1 ? 'Анимация' : 'Модель'}</h2><div data-viz="${t.viz}"></div></section>` : ''}
         <section id="details"><h2>Подробнее</h2>${wrapTables(t.body)}</section>
         <section id="ops"><h2>Сложность: время и память</h2>${BIGO_NOTE}${opsTable(t.ops)}<h3>Память самой структуры</h3><p>${t.space}</p></section>
         <section id="code"><h2>Код на Python</h2>${codeBlock(codeItems, { download: codeItems.length === 1 })}
-          <p class="muted" style="font-size:14px">Код основан на <a href="${REPO}" target="_blank" rel="noopener">репозитории преподавателя</a>, проверен тестами.</p></section>
+          <p class="muted" style="font-size:14px">${t.section === 1 ? 'Код проверен тестами: пустые массивы, дубликаты, случайные данные.' : `Код основан на <a href="${REPO}" target="_blank" rel="noopener">репозитории преподавателя</a>, проверен тестами.`}</p></section>
+        ${relProbs.length ? `<section id="lc"><h2>Задачи LeetCode на эту тему</h2><div class="card plist">${relProbs.map(p => `<a class="prow" href="#/problems/${p.n}"><span class="pn">${p.n}</span><span class="pt"><b>${esc(p.title)}</b><span>${esc(p.ru)} · <span class="diff ${p.diff}">${p.diff}</span></span></span><span></span><span class="ptk">${p.time}</span></a>`).join('')}</div></section>` : ''}
         <section id="links"><h2>Ссылки</h2><ul>${t.links.map(l => `<li><a href="${esc(l[1])}" target="_blank" rel="noopener">${esc(l[0])}</a></li>`).join('')}</ul></section>
         <div class="ticket-nav">${prev ? `<a class="btn" href="#/topics/${prev.id}">← ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="btn" href="#/topics/${next.id}">${esc(next.title)} →</a>` : ''}</div>
       </article>
       <aside class="toc"><b>на странице</b>
         <a href="#/topics/${id}" data-jump="exam">Ответ на экзамене</a>${t.viz ? `<a href="#/topics/${id}" data-jump="model">Модель</a>` : ''}<a href="#/topics/${id}" data-jump="details">Подробнее</a><a href="#/topics/${id}" data-jump="ops">Сложность</a><a href="#/topics/${id}" data-jump="code">Код</a><a href="#/topics/${id}" data-jump="links">Ссылки</a>
-        ${tks.length ? `<b style="margin-top:22px">в билетах</b><div class="chips">${chipsTickets(tks)}</div>` : ''}
+        ${tks.length ? `<b style="margin-top:22px">в билетах</b><div class="chips">${chipsTickets(tks)}</div>` : ''}${qs.length ? `<b style="margin-top:22px">вопрос</b><div class="chips">${chipsQ(qs)}</div>` : ''}
         <b style="margin-top:22px">связанные темы</b><div class="chips">${t.related.map(r => `<a class="chip" href="#/topics/${r}">${esc(topic(r).title)}</a>`).join('')}</div>
       </aside></div></div>`, 'topics');
     app.querySelectorAll('[data-jump]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.getElementById(a.dataset.jump).scrollIntoView({ behavior: 'smooth' }); }));
@@ -202,6 +263,7 @@
 
   let tkFilter = 'all';
   function tickets() {
+    if (SEC !== 2) setSec(2);
     const list = TK.filter(t => tkFilter === 'all' || (tkFilter === 'todo' ? !learned.has(t.n) : learned.has(t.n)));
     page(`<div class="wrap"><div class="eyebrow">раздел 2</div><h1>Билеты</h1>
       <p class="lead">В каждом билете три вопроса: теория, реализация метода и задача LeetCode. Отмечай выученные билеты, прогресс сохранится в этом браузере.</p>
@@ -239,6 +301,7 @@
 
   function ticketPage(n) {
     const t = TK.find(x => x.n === n); if (!t) return notFound();
+    if (SEC !== 2) setSec(2);
     const tp = topic(t.theory), m = M[t.method], p = prob(t.lc);
     const prev = TK.find(x => x.n === n - 1), next = TK.find(x => x.n === n + 1);
     page(`<div class="wrap narrow">
@@ -251,18 +314,53 @@
     </div>`, 'tickets');
   }
 
+  // ---------- вопросы раздела 1 ----------
+  function questions() {
+    if (SEC !== 1) setSec(1);
+    const list = QS.filter(q => tkFilter === 'all' || (tkFilter === 'todo' ? !learned.has(q.n) : learned.has(q.n)));
+    page(`<div class="wrap"><div class="eyebrow">раздел 1 · алгоритмы</div><h1>Вопросы</h1>
+      <p class="lead">15 вопросов к экзамену. В каждом — готовый ответ, анимация, оценка времени и памяти; где нужно что-то реализовать — код и тренажёр с проверкой.</p>
+      <div style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:26px 0 18px">
+        <div class="tk-filters">${[['all', 'Все'], ['todo', 'Не выучены'], ['done', 'Выучены']].map(([k, l]) => `<button data-f="${k}" class="${tkFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <div id="prog" style="min-width:240px">${progHtml()}</div></div>
+      <div class="grid g3">${list.map(questionCard).join('') || '<p class="muted">Здесь пока пусто.</p>'}</div></div>`, 'tickets');
+    app.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { tkFilter = b.dataset.f; questions(); }));
+  }
+  function questionPage(n) {
+    const q = QS.find(x => x.n === n); if (!q) return notFound();
+    if (SEC !== 1) setSec(1);
+    const tp = topic(q.topic), prev = QS.find(x => x.n === n - 1), next = QS.find(x => x.n === n + 1);
+    const rel = P.filter(p => p.topic === q.topic);
+    let k = 1;
+    const answer = `<div class="exam-ans"><span class="lbl">ответ</span>${examWithSpace(tp)}</div>
+      <h3>Время и память</h3>${opsTable(tp.ops)}
+      <p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема: подробности, код и ссылки →</a></p>`;
+    page(`<div class="wrap narrow">
+      <div class="eyebrow"><a href="#/q">вопросы</a> / раздел 1</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h1 style="margin:0">Вопрос ${n}</h1>${learnBtn(n)}</div>
+      <p class="lead" style="margin-top:12px">${esc(q.text)}</p>
+      ${qCard(k++, 'теория', esc(tp.title), answer)}
+      ${tp.viz ? qCard(k++, 'анимация', 'Посмотри, как это работает', `<div data-viz="${tp.viz}"></div>`) : ''}
+      ${q.ex ? qCard(k++, 'реализация', esc(M[q.ex].title), withTrainer(q.ex, methodBlock(q.ex))) : ''}
+      ${q.ex2 ? qCard(k++, 'реализация', esc(M[q.ex2].title), withTrainer(q.ex2, methodBlock(q.ex2))) : ''}
+      ${rel.length ? qCard(k++, 'практика', 'Задачи LeetCode на эту тему', `<div class="chips">${rel.map(p => `<a class="chip" href="#/problems/${p.n}">${p.n}. ${esc(p.title)}</a>`).join('')}</div>`) : ''}
+      <div class="ticket-nav">${prev ? `<a class="btn" href="#/q/${prev.n}">← Вопрос ${prev.n}</a>` : '<span></span>'}<a class="btn" href="#/exam">Случайный вопрос</a>${next ? `<a class="btn" href="#/q/${next.n}">Вопрос ${next.n} →</a>` : '<span></span>'}</div>
+    </div>`, 'tickets');
+  }
+
   function problems() {
-    page(`<div class="wrap"><div class="eyebrow">leetcode</div><h1>Задачи</h1>
-      <p class="lead">Все задачи из билетов: условие, идея, решение на Python и оценка сложности.</p>
-      <div class="card plist" style="margin-top:26px">${P.map(p => `<a class="prow" href="#/problems/${p.n}"><span class="pn">${p.n}</span><span class="pt"><b>${esc(p.title)}</b><span>${esc(p.ru)} · <span class="diff ${p.diff}">${p.diff}</span></span></span>
-        <span class="chips">${p.tags.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</span><span class="ptk">билет ${ticketsForProblem(p.n).join(', ')}</span></a>`).join('')}</div></div>`, 'problems');
+    page(`<div class="wrap"><div class="eyebrow">leetcode · раздел ${SEC}</div><h1>Задачи</h1>
+      <p class="lead">${SEC === 1 ? 'Задачи первого раздела' : 'Все задачи из билетов'}: условие, идея, решение на Python, время и память с объяснением.</p>
+      <div class="card plist" style="margin-top:26px">${PS().map(p => `<a class="prow" href="#/problems/${p.n}"><span class="pn">${p.n}</span><span class="pt"><b>${esc(p.title)}</b><span>${esc(p.ru)} · <span class="diff ${p.diff}">${p.diff}</span></span></span>
+        <span class="chips">${p.tags.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</span><span class="ptk">${p.section === 1 ? esc(topic(p.topic).title) : 'билет ' + ticketsForProblem(p.n).join(', ')}</span></a>`).join('')}</div></div>`, 'problems');
   }
   function problemPage(n) {
     const p = prob(n); if (!p) return notFound();
-    const i = P.indexOf(p), prev = P[i - 1], next = P[i + 1];
+    if (p.section !== SEC) setSec(p.section);
+    const PP = PS(), i = PP.indexOf(p), prev = PP[i - 1], next = PP[i + 1];
     page(`<div class="wrap narrow"><div class="eyebrow"><a href="#/problems">задачи</a> / leetcode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span></div>
       <h1>${esc(p.title)}</h1><p class="lead">${esc(p.ru)}</p>
-      <div class="chips" style="margin:14px 0 26px">${p.tags.map(x => `<span class="chip acc">${esc(x)}</span>`).join('')}${chipsTickets(ticketsForProblem(p.n))}</div>
+      <div class="chips" style="margin:14px 0 26px">${p.tags.map(x => `<span class="chip acc">${esc(x)}</span>`).join('')}${chipsTickets(ticketsForProblem(p.n))}${p.topic ? `<a class="chip" href="#/topics/${p.topic}">тема: ${esc(topic(p.topic).title)}</a>` : ''}</div>
       <div class="card" style="padding:22px">${withTrainer('lc-' + p.n, '<h3 style="margin-top:0">Условие</h3>' + problemBlock(p, false))}</div>
       <div class="ticket-nav">${prev ? `<a class="btn" href="#/problems/${prev.n}">← ${prev.n}. ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="btn" href="#/problems/${next.n}">${next.n}. ${esc(next.title)} →</a>` : ''}</div></div>`, 'problems');
   }
@@ -271,6 +369,7 @@
   let examTimer = null;
   function exam() {
     clearInterval(examTimer);
+    if (SEC === 1) return exam1();
     const pool = TK.filter(t => !learned.has(t.n));
     const src = pool.length ? pool : TK;
     const t = src[Math.floor(Math.random() * src.length)];
@@ -292,6 +391,28 @@
     }, 1000);
   }
 
+  function exam1() {
+    const pool = QS.filter(q => !learned.has(q.n)), src = pool.length ? pool : QS;
+    const q = src[Math.floor(Math.random() * src.length)], tp = topic(q.topic);
+    const hidden = (body) => `<div class="reveal hidden"><button class="btn pri reveal-btn">Показать ответ</button><div class="reveal-body">${body}</div></div>`;
+    let k = 1;
+    const impl = id => qCard(++k, 'реализация', esc(M[id].title), `<p class="muted" style="font-size:14px">Напиши код и нажми «Проверить». Ответ — ниже.</p><div data-trainer="${id}"></div><h3>Ответ</h3>` + hidden(methodBlock(id)));
+    page(`<div class="wrap narrow"><div class="eyebrow">тренировка · раздел 1</div>
+      <div class="exam-top"><h1 style="margin:0">Вопрос ${q.n}</h1><div style="display:flex;gap:10px;align-items:center"><span class="timer" id="timer">00:00</span><button class="btn" id="again">Другой вопрос ↻</button></div></div>
+      <p class="lead" style="margin-top:10px">${esc(q.text)}</p>
+      <p class="muted">Ответь вслух или на бумаге, назови время и память, потом открой ответ. ${pool.length ? `Вопросы берутся из ещё не выученных (${pool.length}).` : 'Все вопросы выучены, берём любой.'}</p>
+      ${qCard(1, 'теория', esc(tp.title), hidden(`<div class="exam-ans">${examWithSpace(tp)}</div>${opsTable(tp.ops)}`))}
+      ${q.ex ? impl(q.ex) : ''}${q.ex2 ? impl(q.ex2) : ''}
+      <div class="ticket-nav"><span>${learnBtn(q.n)}</span><a class="btn" href="#/q/${q.n}">Открыть вопрос полностью →</a></div></div>`, 'exam');
+    app.querySelectorAll('.reveal-btn').forEach(b => b.addEventListener('click', () => b.parentElement.classList.remove('hidden')));
+    document.getElementById('again').addEventListener('click', exam);
+    const t0 = Date.now(), el = document.getElementById('timer');
+    examTimer = setInterval(() => {
+      if (!document.body.contains(el)) return clearInterval(examTimer);
+      const s = Math.floor((Date.now() - t0) / 1000); el.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }, 1000);
+  }
+
   // ---------- код преподавателя ----------
   const BUGS = {
     'Hash_set.py': ['<b>add:</b> при коллизии (дописывание в конец цепочки) нет <code>self.size += 1</code> — size меньше реального количества ключей.', '<b>remove:</b> <code>while head:</code> + <code>head.next.key</code> → <code>AttributeError</code>, если ключа нет в цепочке. Нужно <code>while head.next:</code>.'],
@@ -299,6 +420,7 @@
   };
   const FIXED = { 'Hash_set.py': 'hashset', 'Hash_table.py': 'hashtable', 'Linked_list.py': 'linked-list', 'Double_linked_list.py': 'doubly-linked-list', 'Deque.py': 'deque' };
   function teacher() {
+    if (SEC !== 2) setSec(2);
     const files = Object.keys(C.files).filter(f => f.startsWith('teacher/'));
     page(`<div class="wrap narrow"><div class="eyebrow">исходники</div><h1>Код преподавателя</h1>
       <p class="lead">Файлы из репозитория <a href="${REPO}" target="_blank" rel="noopener">Bunyod2002/Data-structures</a> без изменений. Найденные ошибки отмечены. Исправленные версии лежат в соответствующих темах.</p>
@@ -309,28 +431,30 @@
 
   // ---------- тренажёр ----------
   const practiceItems = () => [
-    ...Object.entries(M).map(([id, m]) => { const own = TK.filter(t => t.method === id).map(t => t.n), th = TK.filter(t => t.theory === m.topic).map(t => t.n); return { id, kind: 'метод', title: m.title, sub: own.length ? 'билеты ' + own.join(', ') : 'теория, билет ' + th.join(', '), topic: m.topic }; }),
-    ...P.map(p => ({ id: 'lc-' + p.n, kind: 'LeetCode ' + p.n, title: p.title, sub: p.ru + ' · ' + p.diff + ' · билет ' + ticketsForProblem(p.n).join(', ') }))
+    ...Object.entries(M).filter(([, m]) => m.section === SEC).map(([id, m]) => { if (m.section === 1) { const qs = QS.filter(q => q.ex === id || q.ex2 === id).map(q => q.n); return { id, kind: 'метод', title: m.title, sub: 'вопрос ' + qs.join(', '), topic: m.topic }; } const own = TK.filter(t => t.method === id).map(t => t.n), th = TK.filter(t => t.theory === m.topic).map(t => t.n); return { id, kind: 'метод', title: m.title, sub: own.length ? 'билеты ' + own.join(', ') : 'теория, билет ' + th.join(', '), topic: m.topic }; }),
+    ...PS().map(p => ({ id: 'lc-' + p.n, kind: 'LeetCode ' + p.n, title: p.title, sub: p.ru + ' · ' + p.diff + (p.section === 1 ? ' · ' + topic(p.topic).title : ' · билет ' + ticketsForProblem(p.n).join(', ')) }))
   ];
   function practice() {
     const done = window.TRAINER.solved(), items = practiceItems();
     const n = items.filter(x => done.has(x.id)).length;
     const row = x => `<a class="prow" href="#/practice/${x.id}"><span class="pn">${done.has(x.id) ? '<span style="color:var(--accent)">✓</span>' : '○'}</span><span class="pt"><b>${esc(x.title)}</b><span>${esc(x.sub)}</span></span><span></span><span class="ptk">${esc(x.kind)}</span></a>`;
-    page(`<div class="wrap"><div class="eyebrow">практика</div><h1>Тренажёр</h1>
+    page(`<div class="wrap"><div class="eyebrow">практика · раздел ${SEC}</div><h1>Тренажёр</h1>
       <p class="lead">Пиши код прямо в браузере. «Запустить» выполняет твой код, «Проверить» прогоняет скрытые тесты с крайними случаями. Python работает на твоём устройстве, ничего устанавливать не нужно.</p>
       <div class="card" style="padding:16px 20px;margin:24px 0 10px;max-width:420px"><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px"><span>Решено заданий</span><b>${n} / ${items.length}</b></div><div class="progress"><i style="width:${n / items.length * 100}%"></i></div></div>
-      <section class="sec" style="margin-top:28px"><div class="sec-h"><h2>Методы из билетов</h2></div><div class="card plist">${items.filter(x => x.kind === 'метод').map(row).join('')}</div></section>
+      <section class="sec" style="margin-top:28px"><div class="sec-h"><h2>${SEC === 1 ? 'Алгоритмы из вопросов' : 'Методы из билетов'}</h2></div><div class="card plist">${items.filter(x => x.kind === 'метод').map(row).join('')}</div></section>
       <section class="sec"><div class="sec-h"><h2>Задачи LeetCode</h2></div><div class="card plist">${items.filter(x => x.kind !== 'метод').map(row).join('')}</div></section></div>`, 'practice');
   }
   function practicePage(id) {
+    const want = M[id] ? M[id].section : (prob(+id.slice(3)) || {}).section;
+    if (want && want !== SEC) setSec(want);
     const items = practiceItems(), i = items.findIndex(x => x.id === id);
     if (i < 0) return notFound();
     const prev = items[i - 1], next = items[i + 1];
     let head;
     if (M[id]) {
       const m = M[id];
-      head = `<div class="eyebrow"><a href="#/practice">тренажёр</a> / метод</div><h1>${esc(m.title)}</h1>
-        <p class="lead">${m.lead || 'Реализуй метод в классе ниже: остальные методы уже написаны.'} Встречается в билетах ${TK.filter(t => t.method === id || (m.lead && t.theory === m.topic)).map(t => `<a href="#/tickets/${t.n}">${t.n}</a>`).join(', ')}.</p>
+      head = `<div class="eyebrow"><a href="#/practice">тренажёр</a> / ${m.section === 1 ? 'алгоритм' : 'метод'}</div><h1>${esc(m.title)}</h1>
+        <p class="lead">${m.lead || 'Реализуй метод в классе ниже: остальные методы уже написаны.'} ${m.section === 1 ? 'Вопрос ' + QS.filter(q => q.ex === id || q.ex2 === id).map(q => `<a href="#/q/${q.n}">${q.n}</a>`).join(', ') : 'Встречается в билетах ' + TK.filter(t => t.method === id || (m.lead && t.theory === m.topic)).map(t => `<a href="#/tickets/${t.n}">${t.n}</a>`).join(', ')}.</p>
         <div class="chips" style="margin:12px 0 20px"><span class="chip" style="white-space:normal">время ${m.time}</span><span class="chip">память ${m.mem}</span><a class="chip" href="#/topics/${m.topic}">тема: ${esc(topic(m.topic).title)}</a></div>
         <details class="hint"><summary>Подсказка: план решения</summary><ol class="steps">${m.steps.map(s => `<li>${s}</li>`).join('')}</ol><p class="muted">Крайние случаи: ${m.edges.join(' · ')}</p><p class="muted">${m.why}</p></details>`;
     } else {
@@ -354,6 +478,8 @@
     else if (a === 'topics') topics();
     else if (a === 'tickets' && b) ticketPage(+b);
     else if (a === 'tickets') tickets();
+    else if (a === 'q' && b) questionPage(+b);
+    else if (a === 'q') questions();
     else if (a === 'problems' && b) problemPage(+b);
     else if (a === 'problems') problems();
     else if (a === 'exam') exam();
@@ -363,23 +489,24 @@
     else notFound();
     window.scrollTo(0, 0);
     const h1 = app.querySelector('h1');
-    document.title = (h1 && a ? h1.textContent + ' · ' : '') + 'АиСД · Раздел 2';
+    document.title = (h1 && a ? h1.textContent + ' · ' : '') + 'АиСД · Раздел ' + SEC;
   }
   window.addEventListener('hashchange', route);
   route();
 
   // ---------- поиск ----------
   const idx = [];
-  T.forEach(t => idx.push({ k: 'тема', t: t.title, s: t.summary, u: `#/topics/${t.id}`, x: strip(t.tag + ' ' + t.exam + ' ' + t.body) }));
+  QS.forEach(q => idx.push({ k: 'вопрос', t: `Вопрос ${q.n} (раздел 1)`, s: q.text, u: `#/q/${q.n}`, x: q.text }));
+  T.forEach(t => idx.push({ k: 'тема ' + t.section, t: t.title, s: t.summary, u: `#/topics/${t.id}`, x: strip(t.tag + ' ' + t.exam + ' ' + t.body) }));
   TK.forEach(t => idx.push({ k: 'билет', t: `Билет ${t.n}`, s: `${Q[t.theory]} · ${M[t.method].title} · LeetCode ${t.lc}`, u: `#/tickets/${t.n}`, x: `билет ${t.n} ${Q[t.theory]} ${M[t.method].title} ${prob(t.lc).title}` }));
-  P.forEach(p => idx.push({ k: 'задача', t: `${p.n}. ${p.title}`, s: p.ru, u: `#/problems/${p.n}`, x: strip(`${p.n} ${p.title} ${p.ru} ${p.tags.join(' ')} ${p.task} ${p.idea}`) }));
-  Object.entries(M).forEach(([id, m]) => idx.push({ k: 'метод', t: m.title, s: TK.some(t => t.method === id) ? 'Билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', ') : 'Тренажёр', u: TK.find(t => t.method === id) ? `#/tickets/${TK.find(t => t.method === id).n}` : `#/practice/${id}`, x: strip(m.steps.join(' ')) }));
+  P.forEach(p => idx.push({ k: 'задача ' + p.section, t: `${p.n}. ${p.title}`, s: p.ru, u: `#/problems/${p.n}`, x: strip(`${p.n} ${p.title} ${p.ru} ${p.tags.join(' ')} ${p.task} ${p.idea}`) }));
+  Object.entries(M).forEach(([id, m]) => idx.push({ k: m.section === 1 ? 'тренажёр' : 'метод', t: m.title, s: TK.some(t => t.method === id) ? 'Билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', ') : 'Тренажёр', u: TK.find(t => t.method === id) ? `#/tickets/${TK.find(t => t.method === id).n}` : `#/practice/${id}`, x: strip(m.steps.join(' ')) }));
   const modal = document.getElementById('searchModal'), inp = document.getElementById('searchInput'), res = document.getElementById('searchResults');
   let sel = 0, found = [];
   const norm = s => s.toLowerCase().replace(/ё/g, 'е');
   function doSearch() {
     const q = norm(inp.value.trim());
-    if (!q) { found = idx.filter(e => e.k === 'тема'); }
+    if (!q) { found = idx.filter(e => e.k === 'тема ' + SEC); }
     else {
       const words = q.split(/\s+/);
       found = idx.map(e => {

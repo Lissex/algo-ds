@@ -19,6 +19,8 @@ for path in sorted(CODE.rglob("*.py")):
     files[rel] = src
     tree = ast.parse(src)
     for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            snippets[f"{rel}::{node.name}"] = ast.get_source_segment(src, node)
         if isinstance(node, ast.ClassDef):
             snippets[f"{rel}::{node.name}"] = ast.get_source_segment(src, node)
             for item in node.body:
@@ -86,10 +88,34 @@ for ex_id, (starter, demo) in spec.PROBLEM_STARTER.items():
         "tests": spec.TESTS[ex_id],
     }
 
+# ---------- Раздел 1 ----------
+import exercises_spec1 as spec1
+
+
+def extract_funcs(src, names):
+    tree = ast.parse(src)
+    parts = [ast.get_source_segment(src, n) for n in tree.body
+             if isinstance(n, (ast.FunctionDef, ast.ClassDef)) and n.name in names]
+    return "\n\n\n".join(parts) + "\n"
+
+
+for ex_id, d in spec1.S1.items():
+    src = files[d["file"]]
+    if d.get("only"):
+        sol = d.get("header", "") + extract_funcs(src, d["only"].split(","))
+    else:
+        sol = src.split("# ---------- Другой вариант")[0].rstrip() + "\n"
+    if d.get("rename"):
+        old, new = d["rename"]
+        sol = sol.replace(old, new)
+    exercises[ex_id] = {"starter": d["starter"].rstrip() + demo_block(d["demo"]), "solution": sol, "tests": d["tests"]}
+for ex_id, (starter, demo) in spec1.P1_STARTER.items():
+    exercises[ex_id] = {"starter": starter.rstrip() + demo_block(demo), "solution": files[spec1.P1_FILES[ex_id]], "tests": spec1.P1_TESTS[ex_id]}
+
 out2 = ROOT / "assets" / "exercises.js"
 out2.write_text(
     "// Сгенерировано tools/build.py из tools/exercises_spec.py — не редактируйте вручную.\n"
-    "window.EXERCISES = " + json.dumps({"harness": spec.HARNESS, "common": spec.COMMON_TESTS, "ex": exercises},
+    "window.EXERCISES = " + json.dumps({"harness": spec.HARNESS, "common": spec.COMMON_TESTS + spec1.COMMON1, "ex": exercises},
                                        ensure_ascii=False, indent=1) + ";\n",
     encoding="utf-8",
 )
