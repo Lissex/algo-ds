@@ -177,7 +177,7 @@
       <button data-a="pop">pop (popright)</button><button data-a="popleft">popleft</button>
       <span class="sep"></span><button data-a="reset">сброс</button>`);
     let cap, head, size, arr, n, freshIdx = -1;
-    const reset = () => { cap = 8; head = 5; size = 0; arr = Array(cap).fill(null); n = 1; ['a', 'b', 'c', 'd'].forEach(v => { arr[(head + size) % cap] = v; size++; }); };
+    const reset = () => { cap = 8; head = 5; size = 0; arr = Array(cap).fill(null); n = 1; freshIdx = -1; ['a', 'b', 'c', 'd'].forEach(v => { arr[(head + size) % cap] = v; size++; }); };
     reset();
     const draw = () => {
       const N = cap, cx = 150, cy = 150, R = 132, r = 82;
@@ -232,14 +232,14 @@
     const LF = 0.75;
     let cap, buckets, size, freshKey = null, hit = -1, flashKey = null;
     const words = ['cat', 'dog', 'owl', 'fox', 'bee', 'ant', 'elk', 'yak', 'emu', 'cow', 'pig', 'hen', 'rat', 'bat', 'eel', 'cod', 'ram', 'koi', 'gnu', 'ape'];
-    const reset = () => { cap = 4; buckets = Array.from({ length: cap }, () => []); size = 0; };
+    const reset = () => { cap = 4; buckets = Array.from({ length: cap }, () => []); size = 0; freshKey = flashKey = null; hit = -1; };
     const idx = k => fnv1a(k) % cap;
     const find = (k) => { const b = buckets[idx(k)]; return b.findIndex(n => n.k === k); };
     const rawPut = (k, v) => { const b = buckets[idx(k)]; const j = b.findIndex(n => n.k === k); if (j >= 0) { b[j].v = v; return false; } b.push({ k, v }); size++; return true; };
     const resize = () => { const old = buckets; cap *= 2; buckets = Array.from({ length: cap }, () => []); size = 0; old.forEach(b => b.forEach(n => rawPut(n.k, n.v))); };
     const put = (k, v) => {
       let msg = '';
-      if (size / cap >= LF) { const o = cap; resize(); msg = `load factor ${(size / o).toFixed(2)} ≥ 0.75 → resize ${o} → ${cap}, все ключи переложены заново. `; }
+      if (find(k) < 0 && size / cap >= LF) { const o = cap; resize(); msg = `load factor ${(size / o).toFixed(2)} ≥ 0.75 → resize ${o} → ${cap}, все ключи переложены заново. `; }
       const i = idx(k), h = fnv1a(k), before = buckets[i].length;
       const added = rawPut(k, v);
       hit = i; freshKey = k;
@@ -288,19 +288,21 @@
       <div class="viz-ctl"><input class="w" style="width:220px" data-i="s" value="hello" aria-label="строка"></div>
       <div class="viz-stage"><div class="hash-out"></div></div>`;
     const inp = el.querySelector('[data-i=s]'), out = el.querySelector('.hash-out');
-    let prev = null;
+    let prev = null, request = 0;
     async function upd() {
-      const s = inp.value, h = fnv1a(s);
+      const s = inp.value, h = fnv1a(s), id = ++request;
+      const previous = prev;
       const bits = h.toString(2).padStart(32, '0');
-      const pb = prev === null ? bits : prev.toString(2).padStart(32, '0');
+      const pb = previous === null ? bits : previous.toString(2).padStart(32, '0');
       const diff = [...bits].filter((b, i) => b !== pb[i]).length;
       let sha = '…';
       try { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); sha = [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
       catch (e) { sha = 'недоступно (откройте сайт по https)'; }
+      if (id !== request) return;
       out.innerHTML = `
         <div class="row"><span>FNV-1a (32 бита)</span><b>${hex(h)}</b><span class="muted">= ${h}</span></div>
         <div class="bits">${[...bits].map((b, i) => `<span class="${b === '1' ? 'one' : ''} ${b !== pb[i] ? 'chg' : ''}">${b}</span>`).join('')}</div>
-        <div class="row"><span>изменилось бит</span><b>${prev === null ? '—' : diff + ' из 32'}</b></div>
+        <div class="row"><span>изменилось бит</span><b>${previous === null ? '—' : diff + ' из 32'}</b></div>
         <div class="row"><span>корзина при cap = 8</span><b>${h % 8}</b></div>
         <div class="row"><span>корзина при cap = 16</span><b>${h % 16}</b></div>
         <div class="row"><span>корзина при cap = 1000</span><b>${h % 1000}</b></div>

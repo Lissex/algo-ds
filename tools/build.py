@@ -112,10 +112,30 @@ for ex_id, d in spec1.S1.items():
 for ex_id, (starter, demo) in spec1.P1_STARTER.items():
     exercises[ex_id] = {"starter": starter.rstrip() + demo_block(demo), "solution": files[spec1.P1_FILES[ex_id]], "tests": spec1.P1_TESTS[ex_id]}
 
+# ---------- Раздел 3 ----------
+import exercises_spec3 as spec3
+
+for ex_id, (fname, names) in spec3.METHOD_EX.items():
+    src = files[fname]
+    main_part = src.rstrip() + "\n"
+    exercises[ex_id] = {
+        "starter": blank_methods(main_part, names).rstrip() + demo_block(spec3.DEMO[ex_id]),
+        "solution": src,
+        "tests": spec3.TESTS[ex_id],
+    }
+for ex_id, (fname, starter, demo, tests) in spec3.FUNCTION_EX.items():
+    exercises[ex_id] = {"starter": starter.rstrip() + demo_block(demo), "solution": files[fname], "tests": tests}
+for ex_id, (starter, demo) in spec3.PROBLEM_STARTER.items():
+    exercises[ex_id] = {
+        "starter": starter.rstrip() + demo_block(demo),
+        "solution": files[spec3.PROBLEM_FILES[ex_id]],
+        "tests": spec3.PROBLEM_TESTS[ex_id].replace("\\n", "\n"),
+    }
+
 out2 = ROOT / "assets" / "exercises.js"
 out2.write_text(
     "// Сгенерировано tools/build.py из tools/exercises_spec.py — не редактируйте вручную.\n"
-    "window.EXERCISES = " + json.dumps({"harness": spec.HARNESS, "common": spec.COMMON_TESTS + spec1.COMMON1, "ex": exercises},
+    "window.EXERCISES = " + json.dumps({"harness": spec.HARNESS, "common": spec.COMMON_TESTS + spec1.COMMON1 + spec3.COMMON3, "ex": exercises},
                                        ensure_ascii=False, indent=1) + ";\n",
     encoding="utf-8",
 )

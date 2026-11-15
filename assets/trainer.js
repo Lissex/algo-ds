@@ -60,7 +60,7 @@ onmessage = async (e) => {
       postMessage({ type: 'done', id: m.id, result: JSON.parse(res), output: out.join('') });
     }
   } catch (err) {
-    postMessage({ type: 'done', id: m.id, fatal: String(err && err.message || err) });
+    postMessage({ type: m.id == null ? 'fatal' : 'done', id: m.id, fatal: String(err && err.message || err) });
   }
 };`;
 
@@ -72,20 +72,37 @@ onmessage = async (e) => {
     try {
       worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })));
     } catch (e) { worker = null; setStatus('error'); return; }
-    worker.onmessage = e => {
+    const current = worker;
+    current.onmessage = e => {
+      if (worker !== current) return;
       const m = e.data;
-      if (m.type === 'ready') { ready = true; setStatus('ready'); readyWaiters.splice(0).forEach(f => f()); }
+      if (m.type === 'ready') { ready = true; setStatus('ready'); readyWaiters.splice(0).forEach(f => f(true)); }
       else if (m.type === 'done' && pending && pending.id === m.id) { clearTimeout(pending.timer); const p = pending; pending = null; p.resolve(m); }
+      else if (m.type === 'fatal') {
+        ready = false; setStatus('error');
+        const failedWorker = worker; worker = null; if (failedWorker) failedWorker.terminate();
+        readyWaiters.splice(0).forEach(f => f(false));
+        if (pending) { const p = pending; pending = null; clearTimeout(p.timer); p.resolve({ fatal: m.fatal || 'Не удалось загрузить Python.' }); }
+      }
     };
-    worker.onerror = () => { setStatus('error'); if (pending) { const p = pending; pending = null; p.resolve({ fatal: 'Не удалось загрузить Python. Проверь интернет и обнови страницу.' }); } };
+    current.onerror = () => {
+      if (worker !== current) return;
+      ready = false; setStatus('error');
+      worker = null; current.terminate();
+      readyWaiters.splice(0).forEach(f => f(false));
+      if (pending) { const p = pending; pending = null; clearTimeout(p.timer); p.resolve({ fatal: 'Не удалось загрузить Python. Проверь интернет и обнови страницу.' }); }
+    };
     setStatus('loading');
-    worker.postMessage({ type: 'warm' });
+    current.postMessage({ type: 'warm' });
   }
-  function whenReady() { return ready ? Promise.resolve() : new Promise(r => readyWaiters.push(r)); }
+  function whenReady() { return ready ? Promise.resolve(true) : new Promise(r => readyWaiters.push(r)); }
   async function exec(msg) {
     if (!worker) spawn();
+    if (!worker) return { fatal: 'Не удалось запустить Python в браузере.' };
     if (pending) return { fatal: 'Подожди, предыдущий запуск ещё идёт' };
-    await whenReady();
+    const initialized = await whenReady();
+    if (!initialized || !ready || !worker) return { fatal: 'Не удалось загрузить Python. Проверь интернет и попробуй ещё раз.' };
+    if (pending) return { fatal: 'Подожди, предыдущий запуск ещё идёт' };
     return new Promise(resolve => {
       const id = ++seq;
       pending = { id, resolve, timer: setTimeout(() => {
@@ -178,7 +195,10 @@ onmessage = async (e) => {
     }
 
     const statusText = { loading: '⏳ загружаю Python (~10 МБ, один раз)…', ready: '● Python готов', error: '⚠ Python не загрузился' };
-    const onStatus = s => { if (document.body.contains(st)) st.textContent = statusText[s] || ''; st.className = 'tr-status ' + s; };
+    const onStatus = s => {
+      if (!document.body.contains(st)) { listeners.delete(onStatus); return; }
+      st.textContent = statusText[s] || ''; st.className = 'tr-status ' + s;
+    };
     listeners.add(onStatus);
     if (worker) onStatus(ready ? 'ready' : 'loading');
 

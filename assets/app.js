@@ -14,17 +14,18 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
   };
   // выбранный раздел: 1 — алгоритмы, 2 — структуры данных
-  let SEC = store.get('sec', 2) === 1 ? 1 : 2;
+  let SEC = [1, 2, 3].includes(store.get('sec', 2)) ? store.get('sec', 2) : 2;
   const QS = window.QUESTIONS1 || [];
-  const LEARN_KEY = { 1: 'learned1', 2: 'learned' };
-  const learnedSets = { 1: new Set(store.get('learned1', [])), 2: new Set(store.get('learned', [])) };
+  const LEARN_KEY = { 1: 'learned1', 2: 'learned', 3: 'learned3' };
+  const learnedSets = { 1: new Set(store.get('learned1', [])), 2: new Set(store.get('learned', [])), 3: new Set(store.get('learned3', [])) };
   let learned = learnedSets[SEC];
   const toggleLearned = (n, sec = SEC) => { const L = learnedSets[sec]; L.has(n) ? L.delete(n) : L.add(n); store.set(LEARN_KEY[sec], [...L]); };
   const TS = () => T.filter(t => t.section === SEC);
   const PS = () => P.filter(p => p.section === SEC);
+  const TKS = () => TK.filter(t => (t.section || 2) === SEC);
   const qOfTopic = id => QS.filter(q => q.topic === id).map(q => q.n);
   function setSec(s, silent) {
-    SEC = s === 1 ? 1 : 2; learned = learnedSets[SEC]; store.set('sec', SEC);
+    SEC = [1, 2, 3].includes(+s) ? +s : 2; learned = learnedSets[SEC]; store.set('sec', SEC);
     document.querySelectorAll('.sec-switch button').forEach(b => b.classList.toggle('on', +b.dataset.sec === SEC));
     const tk = document.querySelector('[data-nav=tickets]');
     if (tk) { tk.textContent = SEC === 1 ? 'Вопросы' : 'Билеты'; tk.setAttribute('href', SEC === 1 ? '#/q' : '#/tickets'); }
@@ -37,7 +38,7 @@
     const tools = document.querySelector('.top-tools');
     const sw = document.createElement('div');
     sw.className = 'sec-switch'; sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', 'Раздел');
-    sw.innerHTML = '<button data-sec="1" title="Алгоритмы">Раздел 1</button><button data-sec="2" title="Структуры данных">Раздел 2</button>';
+    sw.innerHTML = '<button data-sec="1" title="Алгоритмы">Раздел 1</button><button data-sec="2" title="Структуры данных">Раздел 2</button><button data-sec="3" title="Деревья и обходы">Раздел 3</button>';
     tools.insertBefore(sw, tools.firstChild);
     sw.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -127,7 +128,10 @@
   const ticketsForTopic = id => TK.filter(t => t.theory === id || M[t.method].topic === id).map(t => t.n);
   const chipsQ = ns => ns.map(n => `<a class="chip" href="#/q/${n}">вопрос ${n}</a>`).join('');
   const ticketsForProblem = n => TK.filter(t => t.lc === n).map(t => t.n);
-  const chipsTickets = ns => ns.map(n => `<a class="chip" href="#/tickets/${n}">билет ${n}</a>`).join('');
+  const ticketUrl = t => t.section === 3 ? `#/tickets/3/${t.n}` : `#/tickets/${t.n}`;
+  const ticketQuestion = t => Q[t.question || t.theory];
+  const ticketUrlForNumber = n => ticketUrl(TK.find(t => t.n === n && (t.section || 2) === SEC) || {n, section: SEC});
+  const chipsTickets = ns => ns.map(n => `<a class="chip" href="${ticketUrlForNumber(n)}">билет ${n}</a>`).join('');
   const opsTable = ops => `<div class="tbl-wrap"><table class="ops"><tr><th>Операция</th><th>Время</th><th>Память</th><th>Почему так</th></tr>${ops.map(o => `<tr><td>${esc(o[0])}</td><td>${esc(o[1])}</td><td>${esc(o[2])}</td><td>${esc(o[3])}</td></tr>`).join('')}</table></div>`;
   const BIGO_NOTE = `<p class="muted" style="font-size:14px"><b>Время</b> — сколько шагов делает операция в худшем случае. <b>Память</b> — сколько <i>дополнительной</i> памяти ей нужно, не считая самой структуры (O(1) — несколько переменных, сколько бы ни было элементов). <b>*</b> и «амортизированно» — иногда операция дорогая, но в среднем на серию операций выходит указанная оценка.</p>`;
   const examWithSpace = t => wrapTables(t.exam) + `<p><b>Память:</b> ${t.space}</p>`;
@@ -160,13 +164,13 @@
     }));
   }
   const learnBtn = n => `<button class="learn ${learned.has(n) ? 'on' : ''}" data-learn="${n}">${learned.has(n) ? '✓ выучен' : 'отметить выученным'}</button>`;
-  const progHtml = () => { const tot = SEC === 1 ? QS.length : TK.length; return `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px"><span>Выучено ${SEC === 1 ? 'вопросов' : 'билетов'}</span><b>${learned.size} / ${tot}</b></div><div class="progress"><i style="width:${learned.size / tot * 100}%"></i></div>`; };
+  const progHtml = () => { const tot = SEC === 1 ? QS.length : TKS().length; return `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px"><span>Выучено ${SEC === 1 ? 'вопросов' : 'билетов'}</span><b>${learned.size} / ${tot}</b></div><div class="progress"><i style="width:${tot ? learned.size / tot * 100 : 0}%"></i></div>`; };
 
   function ticketCard(t) {
     const p = prob(t.lc);
-    return `<a class="card tk ${learned.has(t.n) ? 'done' : ''}" href="#/tickets/${t.n}">
+    return `<a class="card tk ${learned.has(t.n) ? 'done' : ''}" href="${ticketUrl(t)}">
       <div class="tk-h"><span class="tk-n"><small>билет</small>${t.n}</span></div>
-      <ol><li>${esc(Q[t.theory])}</li><li>${esc(M[t.method].title)}</li><li>LeetCode ${p.n} · ${esc(p.title)}</li></ol>
+      <ol><li>${esc(ticketQuestion(t))}</li><li>${esc(M[t.method].title)}</li><li>LeetCode ${p.n} · ${esc(p.title)}</li></ol>
       <div>${learnBtn(t.n)}</div></a>`;
   }
 
@@ -182,6 +186,16 @@
       <div class="ha-lbl">stack · LIFO</div>
       <div class="ha-row"><span class="ha-node">1</span><span class="ha-node" style="margin-left:5px">7</span><span class="ha-node on" style="margin-left:5px">3</span><span class="ha-arr blink">← top</span></div>
     </div>`;
+    const heroArt3 = `<div class="hero-art" aria-hidden="true">
+      <div class="ha-lbl">binary search tree · inorder</div>
+      <div class="ha-row" style="justify-content:center"><span class="ha-node on">8</span></div>
+      <div class="ha-row" style="justify-content:space-around;margin-top:0"><span class="ha-arr">↙</span><span class="ha-arr">↘</span></div>
+      <div class="ha-row" style="justify-content:space-around;margin-top:0"><span class="ha-node">3</span><span class="ha-node">10</span></div>
+      <div class="ha-lbl" style="margin-top:26px">max-heap · parent ≥ children</div>
+      <div class="ha-row" style="justify-content:center"><span class="ha-node on">10</span></div>
+      <div class="ha-row" style="justify-content:space-around;margin-top:0"><span class="ha-arr">↙</span><span class="ha-arr">↘</span></div>
+      <div class="ha-row" style="justify-content:space-around;margin-top:0"><span class="ha-node">7</span><span class="ha-node">8</span></div>
+    </div>`;
     const hb = [12, 20, 7, 28, 16, 24, 9, 31, 14, 22];
     const heroArt1 = `<div class="hero-art" aria-hidden="true">
       <div class="ha-lbl">sorting · O(n log n)</div>
@@ -191,30 +205,32 @@
       <div class="ha-lbl">recursion</div>
       <div class="ha-row" style="font-size:13px;color:#c5c8ce">fib(n) = fib(n−1) + fib(n−2)<span class="ha-arr blink">▍</span></div>
     </div>`;
-    const ts = TS(), ps = PS();
+    const ts = TS(), ps = PS(), tks = TKS();
     const s1 = SEC === 1;
+    const s2 = SEC === 2;
     page(`<div class="wrap">
       <section class="hero">
         <div><div class="eyebrow">алгоритмы и структуры данных · раздел ${SEC}</div>
           ${s1 ? `<h1>Алгоритмы <em>без зубрёжки</em></h1>
           <p class="lead">Big O, сортировки, рекурсия, бинарный поиск, два указателя и скользящее окно. Теория с пошаговыми анимациями, ответы на 15 вопросов и разбор 18 задач LeetCode на Python.</p>
           <div class="hero-cta"><a class="btn pri" href="#/q">Вопросы →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>`
-          : `<h1>Структуры данных <em>без зубрёжки</em></h1>
+          : s2 ? `<h1>Структуры данных <em>без зубрёжки</em></h1>
           <p class="lead">Стек, очередь, связанные списки, deque, кольцевой массив и хэширование. Теория с живыми моделями, 15 билетов с готовыми ответами и разбор 14 задач LeetCode на Python.</p>
-          <div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>`}
-        </div>${s1 ? heroArt1 : heroArt2}
+          <div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>`
+          : `<h1>Деревья и алгоритмы <em>без зубрёжки</em></h1><p class="lead">Бинарные деревья поиска, кучи, AVL и B-деревья, префиксные деревья, DFS, BFS и heapsort. 10 билетов с ответами и задачами LeetCode.</p><div class="hero-cta"><a class="btn pri" href="#/tickets">Билеты →</a><a class="btn" href="#/exam">Тренировка экзамена</a><a class="btn" href="#/practice">✍ Тренажёр</a></div>`}
+        </div>${s1 ? heroArt1 : s2 ? heroArt2 : heroArt3}
       </section>
       <div class="stats">
         <a class="card stat" href="#/topics" style="text-decoration:none;color:inherit"><b>${ts.length}</b><span>тем с ${s1 ? 'анимациями' : 'моделями'}</span></a>
-        <a class="card stat" href="${s1 ? '#/q' : '#/tickets'}" style="text-decoration:none;color:inherit"><b>${s1 ? QS.length : TK.length}</b><span>${s1 ? 'вопросов' : 'билетов'} с ответами</span></a>
+        <a class="card stat" href="${s1 ? '#/q' : '#/tickets'}" style="text-decoration:none;color:inherit"><b>${s1 ? QS.length : tks.length}</b><span>${s1 ? 'вопросов' : 'билетов'} с ответами</span></a>
         <a class="card stat" href="#/problems" style="text-decoration:none;color:inherit"><b>${ps.length}</b><span>задач LeetCode</span></a>
         <div class="card stat" id="prog" style="display:flex;flex-direction:column;justify-content:center">${progHtml()}</div>
       </div>
       <section class="sec"><div class="sec-h"><h2>Темы</h2><a href="#/topics">все темы →</a></div>
         <div class="grid g3">${ts.map((t, i) => topicCard(t, i)).join('')}</div></section>
       <section class="sec"><div class="sec-h"><h2>${s1 ? 'Вопросы' : 'Билеты'}</h2><a href="${s1 ? '#/q' : '#/tickets'}">все ${s1 ? 'вопросы' : 'билеты'} →</a></div>
-        <div class="grid g3">${s1 ? QS.slice(0, 6).map(questionCard).join('') : TK.slice(0, 6).map(ticketCard).join('')}</div></section>
-      <p class="muted" style="margin-top:36px;font-size:14px">Другой раздел — переключатель «Раздел 1 · Раздел 2» в шапке.</p>
+        <div class="grid g3">${s1 ? QS.slice(0, 6).map(questionCard).join('') : tks.slice(0, 6).map(ticketCard).join('')}</div></section>
+      <p class="muted" style="margin-top:36px;font-size:14px">Другой раздел — переключатель разделов в шапке.</p>
     </div>`, '');
   }
   const topicCard = (t, i) => `<a class="card tcard" href="#/topics/${t.id}"><span class="num">${String(i + 1).padStart(2, '0')} · ${esc(t.tag)}</span><h3>${esc(t.title)}</h3><p>${esc(t.summary)}</p><div class="chips">${t.section === 1 ? qOfTopic(t.id).map(n => `<span class="chip">в. ${n}</span>`).join('') : ticketsForTopic(t.id).map(n => `<span class="chip">б. ${n}</span>`).join('')}</div></a>`;
@@ -263,9 +279,9 @@
 
   let tkFilter = 'all';
   function tickets() {
-    if (SEC !== 2) setSec(2);
-    const list = TK.filter(t => tkFilter === 'all' || (tkFilter === 'todo' ? !learned.has(t.n) : learned.has(t.n)));
-    page(`<div class="wrap"><div class="eyebrow">раздел 2</div><h1>Билеты</h1>
+    if (SEC === 1) { questions(); return; }
+    const list = TKS().filter(t => tkFilter === 'all' || (tkFilter === 'todo' ? !learned.has(t.n) : learned.has(t.n)));
+    page(`<div class="wrap"><div class="eyebrow">раздел ${SEC}</div><h1>Билеты</h1>
       <p class="lead">В каждом билете три вопроса: теория, реализация метода и задача LeetCode. Отмечай выученные билеты, прогресс сохранится в этом браузере.</p>
       <div style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:26px 0 18px">
         <div class="tk-filters">${[['all', 'Все'], ['todo', 'Не выучены'], ['done', 'Выучены']].map(([k, l]) => `<button data-f="${k}" class="${tkFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -299,15 +315,17 @@
   const trainerDone = id => window.TRAINER.solved().has(id);
   const qCard = (n, kind, title, body) => `<section class="card q"><div class="q-h"><span class="q-n">${n}</span><div><div class="q-kind">${kind}</div><h2>${title}</h2></div></div><div class="q-b">${body}</div></section>`;
 
-  function ticketPage(n) {
-    const t = TK.find(x => x.n === n); if (!t) return notFound();
-    if (SEC !== 2) setSec(2);
+  function ticketPage(n, section) {
+    const t = TK.find(x => x.n === n && (x.section || 2) === (section || SEC));
+    if (!t) return notFound();
+    if (SEC !== (t.section || 2)) setSec(t.section || 2);
     const tp = topic(t.theory), m = M[t.method], p = prob(t.lc);
-    const prev = TK.find(x => x.n === n - 1), next = TK.find(x => x.n === n + 1);
+    const ticketSet = TK.filter(x => (x.section || 2) === (t.section || 2));
+    const prev = ticketSet.find(x => x.n === n - 1), next = ticketSet.find(x => x.n === n + 1);
     page(`<div class="wrap narrow">
-      <div class="eyebrow"><a href="#/tickets">билеты</a> / раздел 2</div>
+      <div class="eyebrow"><a href="#/tickets">билеты</a> / раздел ${t.section || 2}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h1 style="margin:0">Билет ${n}</h1>${learnBtn(n)}</div>
-      ${qCard(1, 'теория', esc(Q[t.theory]), (() => { const body = `<div class="exam-ans"><span class="lbl">ответ</span>${examWithSpace(tp)}</div><p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема с моделью и кодом →</a></p>`; const ex = THEORY_EX[t.theory]; return ex ? withTrainer(ex, body) : body; })())}
+      ${qCard(1, 'теория', esc(ticketQuestion(t)), (() => { const body = `<div class="exam-ans"><span class="lbl">ответ</span>${examWithSpace(tp)}</div><p style="margin-top:14px"><a href="#/topics/${tp.id}">Полная тема с моделью и кодом →</a></p>`; const ex = THEORY_EX[t.theory]; return ex ? withTrainer(ex, body) : body; })())}
       ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), withTrainer(t.method, methodBlock(t.method)))}
       ${qCard(3, `задача LeetCode ${p.n} · <span class="diff ${p.diff}">${p.diff}</span>`, `${esc(p.title)} <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, withTrainer('lc-' + p.n, problemBlock(p, true)))}
       <div class="ticket-nav">${prev ? `<a class="btn" href="#/tickets/${prev.n}">← Билет ${prev.n}</a>` : '<span></span>'}<a class="btn" href="#/exam">Случайный билет</a>${next ? `<a class="btn" href="#/tickets/${next.n}">Билет ${next.n} →</a>` : '<span></span>'}</div>
@@ -370,15 +388,16 @@
   function exam() {
     clearInterval(examTimer);
     if (SEC === 1) return exam1();
-    const pool = TK.filter(t => !learned.has(t.n));
-    const src = pool.length ? pool : TK;
+    const allTickets = TKS();
+    const pool = allTickets.filter(t => !learned.has(t.n));
+    const src = pool.length ? pool : allTickets;
     const t = src[Math.floor(Math.random() * src.length)];
     const tp = topic(t.theory), m = M[t.method], p = prob(t.lc);
     const hidden = (body) => `<div class="reveal hidden"><button class="btn pri reveal-btn">Показать ответ</button><div class="reveal-body">${body}</div></div>`;
-    page(`<div class="wrap narrow"><div class="eyebrow">тренировка</div>
+    page(`<div class="wrap narrow"><div class="eyebrow">тренировка · раздел ${SEC}</div>
       <div class="exam-top"><h1 style="margin:0">Билет ${t.n}</h1><div style="display:flex;gap:10px;align-items:center"><span class="timer" id="timer">00:00</span><button class="btn" id="again">Другой билет ↻</button></div></div>
       <p class="lead" style="margin-top:10px">Ответь на вопросы сам, засеки время, потом открой ответы. ${pool.length ? `Билеты берутся из ещё не выученных (${pool.length}).` : 'Все билеты выучены, берём любой.'}</p>
-      ${qCard(1, 'теория', esc(Q[t.theory]), hidden(`<div class="exam-ans">${examWithSpace(tp)}</div>`))}
+      ${qCard(1, 'теория', esc(ticketQuestion(t)), hidden(`<div class="exam-ans">${examWithSpace(tp)}</div>`))}
       ${qCard(2, 'реализация', 'Реализовать метод ' + esc(m.title), `<p class="muted" style="font-size:14px">Напиши метод в редакторе и нажми «Проверить». Ответ — ниже.</p><div data-trainer="${t.method}"></div><h3>Ответ</h3>` + hidden(methodBlock(t.method)))}
       ${qCard(3, `задача LeetCode ${p.n}`, esc(p.title) + ` <span class="muted" style="font-weight:500;font-size:.8em">— ${esc(p.ru)}</span>`, `<p>${p.task}</p><div class="example">${esc(p.example)}</div><div data-trainer="lc-${p.n}"></div><h3>Разбор</h3>` + hidden(`<h3>Идея</h3><p>${p.idea}</p>${codeBlock([{ label: p.file.split('/').pop(), src: C.files[p.file] }])}`))}
       <div class="ticket-nav"><span>${learnBtn(t.n)}</span><a class="btn" href="#/tickets/${t.n}">Открыть билет полностью →</a></div></div>`, 'exam');
@@ -416,13 +435,17 @@
   // ---------- код преподавателя ----------
   const BUGS = {
     'Hash_set.py': ['<b>add:</b> при коллизии (дописывание в конец цепочки) нет <code>self.size += 1</code> — size меньше реального количества ключей.', '<b>remove:</b> <code>while head:</code> + <code>head.next.key</code> → <code>AttributeError</code>, если ключа нет в цепочке. Нужно <code>while head.next:</code>.'],
-    'Hash_table.py': ['<b>__getitem__:</b> <code>while head.next:</code> пропускает последний узел цепочки (KeyError для существующего ключа) и падает на пустой корзине. Нужно <code>while head:</code>.', '<b>remove:</b> в цикле нет <code>head = head.next</code> — бесконечный цикл, если ключ не второй в цепочке.', '<b>keys():</b> опечатка <code>j.keys</code> → должно быть <code>j.key</code>.']
+    'Hash_table.py': ['<b>__getitem__:</b> <code>while head.next:</code> пропускает последний узел цепочки (KeyError для существующего ключа) и падает на пустой корзине. Нужно <code>while head:</code>.', '<b>remove:</b> в цикле нет <code>head = head.next</code> — бесконечный цикл, если ключ не второй в цепочке.', '<b>keys():</b> опечатка <code>j.keys</code> → должно быть <code>j.key</code>.'],
+    'Heap.py': ['В файле два метода <code>heapify</code> и используются разные имена массива (<code>heap</code> и <code>_data</code>). Методы add/remove ссылаются на отсутствующие функции. Рабочая согласованная версия находится в теме «Двоичная куча».'],
+    'binary_search_tree.py': ['<code>remove</code> удаляет узел, но не обновляет <code>size</code>. Исправленная версия возвращает признак удаления и поддерживает размер дерева.'],
+    'Trie.py': ['Метод проверки префикса называется <code>start_width</code>; в исправленной версии он переименован в <code>starts_with</code> для ясного API.']
   };
-  const FIXED = { 'Hash_set.py': 'hashset', 'Hash_table.py': 'hashtable', 'Linked_list.py': 'linked-list', 'Double_linked_list.py': 'doubly-linked-list', 'Deque.py': 'deque' };
+  const FIXED = { 'Hash_set.py': 'hashset', 'Hash_table.py': 'hashtable', 'Linked_list.py': 'linked-list', 'Double_linked_list.py': 'doubly-linked-list', 'Deque.py': 'deque', 'binary_search_tree.py': 'bst', 'Heap.py': 'heap', 'avl_tree.py': 'avl', 'B-tree.py': 'btree', 'Trie.py': 'trie', 'tree_dfs_bfs.py': 'traversal' };
   function teacher() {
-    if (SEC !== 2) setSec(2);
-    const files = Object.keys(C.files).filter(f => f.startsWith('teacher/'));
-    page(`<div class="wrap narrow"><div class="eyebrow">исходники</div><h1>Код преподавателя</h1>
+    if (SEC === 1) setSec(2);
+    const s3Files = ['binary_search_tree.py', 'Heap.py', 'avl_tree.py', 'B-tree.py', 'Trie.py', 'tree_dfs_bfs.py'];
+    const files = Object.keys(C.files).filter(f => f.startsWith('teacher/') && (SEC === 3 ? s3Files.includes(f.split('/').pop()) : !s3Files.includes(f.split('/').pop())));
+    page(`<div class="wrap narrow"><div class="eyebrow">исходники · раздел ${SEC}</div><h1>Код преподавателя</h1>
       <p class="lead">Файлы из репозитория <a href="${REPO}" target="_blank" rel="noopener">Bunyod2002/Data-structures</a> без изменений. Найденные ошибки отмечены. Исправленные версии лежат в соответствующих темах.</p>
       ${files.map(f => { const name = f.split('/').pop(); return `<section class="sec" id="${name}"><div class="sec-h"><h2 style="font-family:var(--f-mono);font-size:20px">${esc(name)}</h2><span class="chips"><a class="chip" href="#/topics/${FIXED[name]}">тема →</a><a class="chip" href="${REPO}/blob/main/${esc(name)}" target="_blank" rel="noopener">GitHub ↗</a></span></div>
         ${BUGS[name] ? `<div class="callout warn">${BUGS[name].map(b => `<p>${b}</p>`).join('')}</div>` : ''}${codeBlock([{ label: name, src: C.files[f], file: f }], { download: true })}</section>`; }).join('')}
@@ -431,7 +454,7 @@
 
   // ---------- тренажёр ----------
   const practiceItems = () => [
-    ...Object.entries(M).filter(([, m]) => m.section === SEC).map(([id, m]) => { if (m.section === 1) { const qs = QS.filter(q => q.ex === id || q.ex2 === id).map(q => q.n); return { id, kind: 'метод', title: m.title, sub: 'вопрос ' + qs.join(', '), topic: m.topic }; } const own = TK.filter(t => t.method === id).map(t => t.n), th = TK.filter(t => t.theory === m.topic).map(t => t.n); return { id, kind: 'метод', title: m.title, sub: own.length ? 'билеты ' + own.join(', ') : 'теория, билет ' + th.join(', '), topic: m.topic }; }),
+    ...Object.entries(M).filter(([, m]) => m.section === SEC).map(([id, m]) => { if (m.section === 1) { const qs = QS.filter(q => q.ex === id || q.ex2 === id).map(q => q.n); return { id, kind: 'метод', title: m.title, sub: 'вопрос ' + qs.join(', '), topic: m.topic }; } const own = TKS().filter(t => t.method === id).map(t => t.n), th = TKS().filter(t => t.theory === m.topic).map(t => t.n); return { id, kind: 'метод', title: m.title, sub: own.length ? 'билеты ' + own.join(', ') : 'теория, билет ' + th.join(', '), topic: m.topic }; }),
     ...PS().map(p => ({ id: 'lc-' + p.n, kind: 'LeetCode ' + p.n, title: p.title, sub: p.ru + ' · ' + p.diff + (p.section === 1 ? ' · ' + topic(p.topic).title : ' · билет ' + ticketsForProblem(p.n).join(', ')) }))
   ];
   function practice() {
@@ -472,10 +495,11 @@
   // ---------- роутер ----------
   function route() {
     const h = location.hash.replace(/^#\/?/, '');
-    const [a, b] = h.split('/');
+    const [a, b, c] = h.split('/');
     if (!a) home();
     else if (a === 'topics' && b) topicPage(b);
     else if (a === 'topics') topics();
+    else if (a === 'tickets' && b && c) ticketPage(+c, +b);
     else if (a === 'tickets' && b) ticketPage(+b);
     else if (a === 'tickets') tickets();
     else if (a === 'q' && b) questionPage(+b);
@@ -498,9 +522,9 @@
   const idx = [];
   QS.forEach(q => idx.push({ k: 'вопрос', t: `Вопрос ${q.n} (раздел 1)`, s: q.text, u: `#/q/${q.n}`, x: q.text }));
   T.forEach(t => idx.push({ k: 'тема ' + t.section, t: t.title, s: t.summary, u: `#/topics/${t.id}`, x: strip(t.tag + ' ' + t.exam + ' ' + t.body) }));
-  TK.forEach(t => idx.push({ k: 'билет', t: `Билет ${t.n}`, s: `${Q[t.theory]} · ${M[t.method].title} · LeetCode ${t.lc}`, u: `#/tickets/${t.n}`, x: `билет ${t.n} ${Q[t.theory]} ${M[t.method].title} ${prob(t.lc).title}` }));
+  TK.forEach(t => idx.push({ k: 'билет · раздел ' + (t.section || 2), t: `Билет ${t.n}`, s: `${ticketQuestion(t)} · ${M[t.method].title} · LeetCode ${t.lc}`, u: ticketUrl(t), x: `билет ${t.n} ${ticketQuestion(t)} ${M[t.method].title} ${prob(t.lc).title}` }));
   P.forEach(p => idx.push({ k: 'задача ' + p.section, t: `${p.n}. ${p.title}`, s: p.ru, u: `#/problems/${p.n}`, x: strip(`${p.n} ${p.title} ${p.ru} ${p.tags.join(' ')} ${p.task} ${p.idea}`) }));
-  Object.entries(M).forEach(([id, m]) => idx.push({ k: m.section === 1 ? 'тренажёр' : 'метод', t: m.title, s: TK.some(t => t.method === id) ? 'Билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', ') : 'Тренажёр', u: TK.find(t => t.method === id) ? `#/tickets/${TK.find(t => t.method === id).n}` : `#/practice/${id}`, x: strip(m.steps.join(' ')) }));
+  Object.entries(M).forEach(([id, m]) => { const ticket = TK.find(t => t.method === id); idx.push({ k: m.section === 1 ? 'тренажёр' : 'метод', t: m.title, s: ticket ? 'Билеты ' + TK.filter(t => t.method === id).map(t => t.n).join(', ') : 'Тренажёр', u: ticket ? ticketUrl(ticket) : `#/practice/${id}`, x: strip(m.steps.join(' ')) }); });
   const modal = document.getElementById('searchModal'), inp = document.getElementById('searchInput'), res = document.getElementById('searchResults');
   let sel = 0, found = [];
   const norm = s => s.toLowerCase().replace(/ё/g, 'е');

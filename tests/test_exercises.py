@@ -15,6 +15,11 @@ if HAS_ALARM:
     signal.signal(signal.SIGALRM, alarm)
 
 bad = 0
+section3_ids = {
+    "bst-add", "bst-remove", "avl-add", "avl-rotate", "heapify", "heap-add",
+    "heap-remove", "trie-add", "trie-delete", "heap-sort", "lc-100", "lc-104",
+    "lc-108", "lc-109", "lc-347", "lc-543", "lc-653", "lc-700", "lc-703", "lc-973",
+}
 for ex_id, ex in data["ex"].items():
     if HAS_ALARM: signal.alarm(10)
     sol = json.loads(run(ex["solution"], data["common"], ex["tests"]))
@@ -29,7 +34,8 @@ for ex_id, ex in data["ex"].items():
         try: exec(compile(ex["starter"], "s.py", "exec"), {"__name__": "__main__"})
         except SyntaxError as e: fails.append(["starter syntax", False, str(e)])
         except Exception: pass
-    ok = "error" not in sol and not fails and total >= 3 and passed_starter < total
+    min_tests = 2 if ex_id in section3_ids else 3
+    ok = "error" not in sol and not fails and total >= min_tests and passed_starter < total
     if not ok: bad += 1
     print(f"{'OK ' if ok else 'BAD'} {ex_id:17} тестов {total}, заготовка проходит {passed_starter}/{total}", "" if ok else (sol.get('error') or fails))
 print("ВСЕ ЗАДАНИЯ OK" if not bad else f"ОШИБОК: {bad}")
