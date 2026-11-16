@@ -436,9 +436,9 @@
   const BUGS = {
     'Hash_set.py': ['<b>add:</b> при коллизии (дописывание в конец цепочки) нет <code>self.size += 1</code> — size меньше реального количества ключей.', '<b>remove:</b> <code>while head:</code> + <code>head.next.key</code> → <code>AttributeError</code>, если ключа нет в цепочке. Нужно <code>while head.next:</code>.'],
     'Hash_table.py': ['<b>__getitem__:</b> <code>while head.next:</code> пропускает последний узел цепочки (KeyError для существующего ключа) и падает на пустой корзине. Нужно <code>while head:</code>.', '<b>remove:</b> в цикле нет <code>head = head.next</code> — бесконечный цикл, если ключ не второй в цепочке.', '<b>keys():</b> опечатка <code>j.keys</code> → должно быть <code>j.key</code>.'],
-    'Heap.py': ['В файле два метода <code>heapify</code> и используются разные имена массива (<code>heap</code> и <code>_data</code>). Методы add/remove ссылаются на отсутствующие функции. Рабочая согласованная версия находится в теме «Двоичная куча».'],
-    'binary_search_tree.py': ['<code>remove</code> удаляет узел, но не обновляет <code>size</code>. Исправленная версия возвращает признак удаления и поддерживает размер дерева.'],
-    'Trie.py': ['Метод проверки префикса называется <code>start_width</code>; в исправленной версии он переименован в <code>starts_with</code> для ясного API.']
+      'Heap.py': ['<b>Исправлено:</b> в исходнике <code>heapify</code> объявлен дважды, используются разные массивы (<code>heap</code>/<code>_data</code>) и вызываются отсутствующие варианты <code>_sift_*</code>/<code>_shift_*</code>. В рабочей версии сохранены исходные методы и имена; ссылки согласованы, <code>_is_min</code> инициализирован, <code>pop</code> возвращает извлечённый корень.'],
+      'binary_search_tree.py': ['<b>Исправлено:</b> <code>remove</code> не обновлял <code>size</code>, а после удаления последнего узла <code>add_node</code> не мог вставить новый корень. Размер обновляется только при найденном ключе; исходный алгоритм удаления сохранён и не использует служебные флаги. Добавлена обработка пустого дерева в обходе и поиске минимума/максимума.'],
+      'Trie.py': ['Имя <code>start_width</code> и исходные методы сохранены. Опечатку в имени не переименовывали, чтобы рабочий API совпадал с оригиналом.']
   };
   const FIXED = { 'Hash_set.py': 'hashset', 'Hash_table.py': 'hashtable', 'Linked_list.py': 'linked-list', 'Double_linked_list.py': 'doubly-linked-list', 'Deque.py': 'deque', 'binary_search_tree.py': 'bst', 'Heap.py': 'heap', 'avl_tree.py': 'avl', 'B-tree.py': 'btree', 'Trie.py': 'trie', 'tree_dfs_bfs.py': 'traversal' };
   function teacher() {
@@ -446,7 +446,7 @@
     const s3Files = ['binary_search_tree.py', 'Heap.py', 'avl_tree.py', 'B-tree.py', 'Trie.py', 'tree_dfs_bfs.py'];
     const files = Object.keys(C.files).filter(f => f.startsWith('teacher/') && (SEC === 3 ? s3Files.includes(f.split('/').pop()) : !s3Files.includes(f.split('/').pop())));
     page(`<div class="wrap narrow"><div class="eyebrow">исходники · раздел ${SEC}</div><h1>Код преподавателя</h1>
-      <p class="lead">Файлы из репозитория <a href="${REPO}" target="_blank" rel="noopener">Bunyod2002/Data-structures</a> без изменений. Найденные ошибки отмечены. Исправленные версии лежат в соответствующих темах.</p>
+        <p class="lead">Исходные файлы преподавателя показаны без изменений. Рабочий код повторяет их набор методов и логику; исправлены только отмеченные ошибки. К основным шагам добавлены короткие комментарии.</p>
       ${files.map(f => { const name = f.split('/').pop(); return `<section class="sec" id="${name}"><div class="sec-h"><h2 style="font-family:var(--f-mono);font-size:20px">${esc(name)}</h2><span class="chips"><a class="chip" href="#/topics/${FIXED[name]}">тема →</a><a class="chip" href="${REPO}/blob/main/${esc(name)}" target="_blank" rel="noopener">GitHub ↗</a></span></div>
         ${BUGS[name] ? `<div class="callout warn">${BUGS[name].map(b => `<p>${b}</p>`).join('')}</div>` : ''}${codeBlock([{ label: name, src: C.files[f], file: f }], { download: true })}</section>`; }).join('')}
     </div>`, 'teacher');

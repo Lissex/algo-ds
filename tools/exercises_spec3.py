@@ -45,21 +45,21 @@ METHOD_EX = {
     "bst-remove": ("structures/binary_search_tree.py", ["BinaryTree.remove", "BinaryTree._remove"]),
     "avl-add": ("structures/avl_tree.py", ["AVLTree.insert", "AVLTree._insert"]),
     "heapify": ("structures/heap.py", ["Heap.heapify"]),
-    "heap-add": ("structures/heap.py", ["Heap.add"]),
-    "heap-remove": ("structures/heap.py", ["Heap.remove"]),
+    "heap-add": ("structures/heap.py", ["Heap.append"]),
+    "heap-remove": ("structures/heap.py", ["Heap.pop"]),
     "trie-add": ("structures/trie.py", ["Trie.insert"]),
     "trie-delete": ("structures/trie.py", ["Trie.delete"]),
     "avl-rotate": ("structures/avl_tree.py", ["AVLTree.rotate_right", "AVLTree.rotate_left", "AVLTree.rebalance"]),
 }
 
 DEMO = {
-    "bst-add": 'tree = BinaryTree()\nfor x in [8, 3, 10, 1, 6]: tree.add_node(x)\nprint(tree.dfs(), tree.size)  # [1, 3, 6, 8, 10], 5',
-    "bst-remove": 'tree = BinaryTree(8)\nfor x in [3, 10, 1, 6, 14, 4, 7, 13]: tree.add_node(x)\nprint(tree.remove(3), tree.dfs(), tree.size)',
+    "bst-add": 'tree = BinaryTree(8)\nfor x in [3, 10, 1, 6]: tree.add_node(x)\nprint(tree.dfs(), tree.size)  # [1, 3, 6, 8, 10], 5',
+    "bst-remove": 'tree = BinaryTree(8)\nfor x in [3, 10, 1, 6, 14, 4, 7, 13]: tree.add_node(x)\ntree.remove(3)\nprint(tree.dfs(), tree.size)',
     "avl-add": 'tree = AVLTree()\nfor x in [10, 20, 30, 40, 50, 25]: tree.insert(x)\nprint(tree.inorder(), tree.root.key)',
-    "heapify": 'h = Heap([3, 1, 6, 5, 2, 4])\nprint(h.heap, h.peek())  # max-heap, максимум 6',
-    "heap-add": 'h = Heap([8, 5, 3])\nh.add(10)\nprint(h.heap, h.peek())  # максимум 10',
-    "heap-remove": 'h = Heap([8, 5, 3, 10])\nprint(h.remove(), h.peek())  # 10, затем 8',
-    "trie-add": 't = Trie()\nt.insert("cat"); t.insert("car")\nprint(t.search("cat"), t.starts_with("ca"))',
+    "heapify": 'h = Heap()\nh.heapify([3, 1, 6, 5, 2, 4])\nprint(h.heap, h.peek())  # max-heap, максимум 6',
+    "heap-add": 'h = Heap()\nh.heapify([8, 5, 3])\nh.append(10)\nprint(h.heap, h.peek())  # максимум 10',
+    "heap-remove": 'h = Heap()\nh.heapify([8, 5, 3, 10])\nprint(h.pop(), h.peek())  # 10, затем 8',
+    "trie-add": 't = Trie()\nt.insert("cat"); t.insert("car")\nprint(t.search("cat"), t.start_width("ca"))',
     "trie-delete": 't = Trie()\nt.insert("car"); t.insert("cart")\nprint(t.delete("car"), t.search("cart"), t.search("car"))',
     "avl-rotate": 'tree = AVLTree()\nfor x in [30, 20, 10]: tree.insert(x)\nprint(tree.root.key, tree.inorder())  # 20, [10, 20, 30]',
 }
@@ -68,21 +68,21 @@ TESTS = {
 "bst-add": r'''
 @test("вставка и inorder")
 def _():
-    t=BinaryTree(); [t.add_node(x) for x in [8,3,10,1,6]]; eq(t.dfs(),[1,3,6,8,10]); eq(t.size,5)
+    t=BinaryTree(8); [t.add_node(x) for x in [3,10,1,6]]; eq(t.dfs(),[1,3,6,8,10]); eq(t.size,5)
 @test("корень и дубликат")
 def _():
-    t=BinaryTree(); t.add_node(5); eq(t.root.val,5); raises(ValueError,lambda:t.add_node(5))
+    t=BinaryTree(5); eq(t.root.val,5); raises(ValueError,lambda:t.add_node(5))
 ''',
 "bst-remove": r'''
 @test("удаление листа, одного и двух детей")
 def _():
     t=BinaryTree(8)
     for x in [3,10,1,6,14,4,7,13]: t.add_node(x)
-    for x in [1,14,3,8]: assert t.remove(x); assert_bst(t.root)
+    for x in [1,14,3,8]: t.remove(x); assert_bst(t.root)
     eq(t.dfs(),[4,6,7,10,13]); eq(t.size,5)
 @test("отсутствующий ключ")
 def _():
-    t=BinaryTree(2); eq(t.remove(9),False); eq(t.size,1)
+    t=BinaryTree(2); t.remove(9); eq(t.size,1)
 ''',
 "avl-add": r'''
 @test("повороты и отсортированный порядок")
@@ -97,35 +97,35 @@ def _():
 "heapify": r'''
 @test("max-heap")
 def _():
-    h=Heap(); h.heap=[3,1,6,5,2,4]; h._is_min=False; h.heapify()
+    h=Heap(); h.heapify([3,1,6,5,2,4])
     eq(h.heap[0],6)
     for i in range(1,len(h.heap)): assert h.heap[(i-1)//2] >= h.heap[i]
 @test("min-heap, пустой и singleton")
 def _():
     for a in [[],[7],[8,2,5,1,9]]:
-        h=Heap(); h.heap=a[:]; h._is_min=True; h.heapify()
+        h=Heap(); h._is_min=True; h.heapify(a)
         for i in range(1,len(h.heap)): assert h.heap[(i-1)//2] <= h.heap[i]
 ''',
 "heap-add": r'''
 @test("добавление в max-heap")
 def _():
-    h=Heap([7,4,5]); h.add(9); eq(h.peek(),9)
+    h=Heap(); h.heapify([7,4,5]); h.append(9); eq(h.peek(),9)
     for i in range(1,len(h.heap)): assert h.heap[(i-1)//2] >= h.heap[i]
 @test("min-heap")
 def _():
-    h=Heap([7,4,5],is_min=True); h.add(2); eq(h.peek(),2)
+    h=Heap(); h._is_min=True; h.heapify([7,4,5]); h.append(2); eq(h.peek(),2)
 ''',
 "heap-remove": r'''
 @test("извлекает значения по убыванию")
 def _():
-    h=Heap([3,1,6,5,2,4]); eq([h.remove() for _ in range(6)],[6,5,4,3,2,1])
+    h=Heap(); h.heapify([3,1,6,5,2,4]); eq([h.pop() for _ in range(6)],[6,5,4,3,2,1])
 @test("ошибка на пустой куче")
-def _(): raises(IndexError,lambda:Heap().remove())
+def _(): raises(ValueError,lambda:Heap().pop())
 ''',
 "trie-add": r'''
 @test("поиск и префикс")
 def _():
-    t=Trie(); t.insert("car"); t.insert("cart"); eq(t.search("car"),True); eq(t.search("ca"),False); eq(t.starts_with("ca"),True)
+    t=Trie(); t.insert("car"); t.insert("cart"); eq(t.search("car"),True); eq(t.search("ca"),False); eq(t.start_width("ca"),True)
 @test("пустое слово и дубликат")
 def _():
     t=Trie(); t.insert(""); t.insert(""); eq(t.search(""),True)

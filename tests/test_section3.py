@@ -94,10 +94,10 @@ def check_btree(tree):
 
 
 def test_bst():
-    tree, ref = BST.BinaryTree(), set()
     values = list(range(-80, 81))
     random.shuffle(values)
-    for value in values:
+    tree, ref = BST.BinaryTree(values[0]), {values[0]}
+    for value in values[1:]:
         tree.add_node(value)
         ref.add(value)
         assert tree.size == len(ref)
@@ -111,13 +111,17 @@ def test_bst():
         pass
     random.shuffle(values)
     for value in values:
-        assert tree.remove(value) is True
+        assert tree.find(value)
+        tree.remove(value)
         ref.remove(value)
         assert tree.size == len(ref)
         assert tree.dfs() == sorted(ref)
         check_bst(tree.root)
-    assert tree.remove(1000) is False
+    tree.remove(1000)
     assert tree.size == 0 and tree.dfs() == []
+    tree.add_node(42)
+    assert tree.root.val == 42 and tree.size == 1
+    tree.remove(42)
     for fn in (tree.get_min, tree.get_max):
         try:
             fn()
@@ -154,23 +158,25 @@ def test_heap():
     for is_min in (False, True):
         for _ in range(20):
             values = [random.randint(-100, 100) for _ in range(random.randrange(0, 80))]
-            heap = HEAP.Heap(values, is_min=is_min)
+            heap = HEAP.Heap()
+            heap._is_min = is_min
+            heap.heapify(values)
             ref = values[:]
             assert is_heap(heap.heap, is_min)
             while ref:
                 target = min(ref) if is_min else max(ref)
                 assert heap.peek() == target
-                assert heap.remove() == target
+                assert heap.pop() == target
                 ref.remove(target)
                 assert is_heap(heap.heap, is_min)
-            for name, fn in (("peek", heap.peek), ("remove", heap.remove)):
+            for name, fn in (("peek", heap.peek), ("pop", heap.pop)):
                 try:
                     fn()
                     assert False, f"{name} on empty heap must fail"
-                except IndexError:
+                except ValueError:
                     pass
             for value in [5, -2, 5, 0]:
-                heap.add(value)
+                heap.append(value)
                 assert is_heap(heap.heap, is_min)
 
 
@@ -214,7 +220,7 @@ def test_trie():
             ref.add(word)
         for probe in (word, "", "a", "ab"):
             assert trie.search(probe) is (probe in ref)
-            assert trie.starts_with(probe) is any(item.startswith(probe) for item in ref)
+            assert trie.start_width(probe) is any(item.startswith(probe) for item in ref)
 
 
 def test_heap_sort_and_traversals():
@@ -251,10 +257,10 @@ def test_heap_sort_and_traversals():
 
     for _ in range(250):
         root = make_tree()
-        assert TRAVERSAL.dfs_preorder(root) == preorder(root)
-        assert TRAVERSAL.bfs(root) == breadth_first(root)
-    assert TRAVERSAL.dfs_preorder(None) == []
-    assert TRAVERSAL.bfs(None) == []
+        assert TRAVERSAL.preorder(root) == preorder(root)
+        assert TRAVERSAL.bfs_binary_tree(root) == breadth_first(root)
+    assert TRAVERSAL.preorder(None) == []
+    assert TRAVERSAL.bfs_binary_tree(None) == []
 
 
 def test_leetcode_trees():

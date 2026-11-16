@@ -1,49 +1,56 @@
-"""Префиксное дерево с добавлением, поиском, префиксом и удалением."""
-
-
 class TrieNode:
+
     def __init__(self):
         self.children = {}
         self.is_end = False
 
 
 class Trie:
+
     def __init__(self):
         self.root = TrieNode()
 
-    def insert(self, word):
+    def insert(self, word):  # добавляет слово
         node = self.root
-        for char in word:
-            if char not in node.children:
-                node.children[char] = TrieNode()
-            node = node.children[char]
+        for ch in word:
+            if ch not in node.children:
+                node.children[ch] = TrieNode()
+            node = node.children[ch]
         node.is_end = True
 
-    def search(self, word):
-        node = self._walk(word)
-        return node is not None and node.is_end
-
-    def starts_with(self, prefix):
-        return self._walk(prefix) is not None
-
-    def _walk(self, text):
+    def search(self, word):  # ищет слово
         node = self.root
-        for char in text:
-            node = node.children.get(char)
-            if node is None:
-                return None
-        return node
+        for ch in word:
+            if ch not in node.children:
+                return False
+            node = node.children[ch]
+        return node.is_end
+
+    def start_width(self, prefix):  # определяет есть ли слово с таким префиксом
+        node = self.root
+        for ch in prefix:
+            if ch not in node.children:
+                return False
+            node = node.children[ch]
+        return True
 
     def delete(self, word):
         if not self.search(word):
             return False
-        def prune(node, depth):
+
+        def dfs_del(node, word, depth):
             if depth == len(word):
                 node.is_end = False
-            else:
-                char = word[depth]
-                if prune(node.children[char], depth + 1):
-                    del node.children[char]
-            return not node.is_end and not node.children
-        prune(self.root, 0)
+                return len(node.children) == 0
+            ch = word[depth]
+            child = node.children.get(ch)          
+            if child is None:                      
+                return False
+            delete_child = dfs_del(child, word, depth + 1)
+            if delete_child:
+                del node.children[ch]              # было: node.chldren[ch]
+                return (not node.is_end) and (len(node.children) == 0)
+            return False
+
+        dfs_del(self.root, word, 0)
         return True
